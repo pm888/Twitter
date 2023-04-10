@@ -3,6 +3,7 @@ package server
 import (
 	Serviceuser "Twitter_like_application/cmd/internal/database"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -13,7 +14,7 @@ var tweets []Serviceuser.Tweet
 func Server() {
 	r := mux.NewRouter()
 	//r.HandleFunc("/tweets", getTweets).Methods("GET")
-	r.HandleFunc("/tweets", createUser).Methods("POST")
+	r.HandleFunc("/tweets", CreateUser).Methods("POST")
 	http.ListenAndServe("localhost:8080", r)
 }
 
@@ -33,11 +34,7 @@ func Server() {
 //	json.NewEncoder(w).Encode(tweet)
 //}
 
-func createUser(w http.ResponseWriter, r *http.Request) {
-	//for i, _ := range Serviceuser.UserDate {
-	//	fmt.Println(i)
-	//
-	//}
+func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var newUser Serviceuser.Users
 	err := json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
@@ -56,11 +53,13 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	newUser.Password = string(hashedPassword)
-	Serviceuser.Put(&newUser)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	ret := Serviceuser.Put(&newUser)
+	if ret == false {
+		fmt.Fprint(w, "This user is alredy added")
 		return
+	} else {
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(newUser)
 	}
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newUser)
+	return
 }

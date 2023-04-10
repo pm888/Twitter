@@ -1,24 +1,24 @@
 package Serviceuser
 
-import "fmt"
-
 type UserDataSTR struct {
 	UserData map[int]*Users
 }
 
 var (
 	UserDate = make(map[int]*Users)
-	counter  = 0
 )
 
-func Put(u *Users) {
+func Put(u *Users) bool {
 	for _, user := range UserDate {
 		if user.Email == u.Email {
-			fmt.Println("This user alredy was added ")
+			return false
 
 		}
+
 	}
-	counter++
-	u.ID = counter
+	u.ID = len(UserDate) + 1
 	UserDate[u.ID] = u
+
+	return true
+
 }
