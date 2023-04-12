@@ -23,3 +23,12 @@ type Tweet struct {
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type DeleteUserST struct {
+	UserIdDeleting int `json:"delete_id"`
+}
+
+type FollowingForUser struct {
+	Writer     int `json:"writer"`
+	Subscriber int `json:"subscriber"`
+}

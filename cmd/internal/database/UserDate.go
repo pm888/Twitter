@@ -94,7 +94,40 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	var deleteUser Users
+	err := json.NewDecoder(r.Body).Decode(&deleteUser)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for id, _ := range UserDate {
+		if deleteUser.ID == id {
+			delete(UserDate, id)
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+}
+
+func Following(w http.ResponseWriter, r *http.Request) {
+	var writer, subscriber Users
+	err := json.NewDecoder(r.Body).Decode(&writer)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+}
+
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func Seemyprofile(w http.ResponseWriter, r *http.Request) {
 
 }
 

@@ -12,6 +12,7 @@ func Server() {
 	r.HandleFunc("/tweets", services.GetTweets).Methods("GET")
 	r.HandleFunc("/tweets", services.CreateTweet).Methods("POST")
 	r.HandleFunc("/addusers", Serviceuser.CreateUser).Methods("POST")
+	r.HandleFunc("/deleteuser", Serviceuser.DeleteUser).Methods("POST")
 	r.HandleFunc("/login", Serviceuser.LoginUsers).Methods("POST")
 	r.HandleFunc("/logout", Serviceuser.LogoutUser)
 	r.HandleFunc("/home", Serviceuser.Home)
