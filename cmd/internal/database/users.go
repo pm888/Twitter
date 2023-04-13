@@ -13,12 +13,13 @@ type Users struct {
 	Nickname  string `json:"nickname"`
 	Bio       string `json:"bio"`
 	Location  string `json:"location"`
-	Following []string
+	Tweet
+	Following []int
 	Followers []int
 }
 
 type Tweet struct {
-	ID        string    `json:"id"`
+	ID        int       `json:"id"`
 	Author    string    `json:"author"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
@@ -31,4 +32,5 @@ type DeleteUserST struct {
 type FollowingForUser struct {
 	Writer     int `json:"writer"`
 	Subscriber int `json:"subscriber"`
+	Users
 }

@@ -17,6 +17,7 @@ var (
 )
 
 func Put(u *Users) bool {
+	//for map
 	for _, user := range UserDate {
 		if user.Email == u.Email {
 			return false
@@ -101,6 +102,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	//for map
 	for id, _ := range UserDate {
 		if deleteUser.ID == id {
 			delete(UserDate, id)
@@ -114,11 +116,20 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func Following(w http.ResponseWriter, r *http.Request) {
-	var writer, subscriber Users
-	err := json.NewDecoder(r.Body).Decode(&writer)
+	var user FollowingForUser
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	writer := user.Writer
+	subscriber := user.Subscriber
+	//for map
+	for id, _ := range UserDate {
+		if id == subscriber {
+			UserDate[writer].Followers = append(UserDate[writer].Following, subscriber)
+			UserDate[subscriber].Following = append(UserDate[subscriber].Followers, writer)
+		}
 	}
 
 }
