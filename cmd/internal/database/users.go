@@ -18,11 +18,23 @@ type Users struct {
 	Followers []int
 }
 
+type ReplaceMyData struct {
+	NewName      string `json:"new_name"`
+	NewPassword  string `json:"new_password"`
+	NewEmail     string `json:"new_email"`
+	NewBirthDate string `json:"new_birth_date"`
+	NewNickname  string `json:"new_nickname"`
+	NewBio       string `json:"new_bio"`
+	NewLocation  string `json:"new_location"`
+}
+
 type Tweet struct {
 	ID        int       `json:"id"`
 	Author    string    `json:"author"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
+	Like      int
+	Repost    int
 }
 
 type DeleteUserST struct {

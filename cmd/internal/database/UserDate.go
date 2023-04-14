@@ -134,11 +134,57 @@ func Following(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func ResetPassword(w http.ResponseWriter, r *http.Request) {
+func ExploreMyaccaunt(w http.ResponseWriter, r *http.Request) {
+	var user Users
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for id, _ := range UserDate {
+		if id == user.ID {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, user)
+		}
+	}
 
 }
 
-func Seemyprofile(w http.ResponseWriter, r *http.Request) {
+func EditmyProfile(w http.ResponseWriter, r *http.Request) {
+	var newuser ReplaceMyData
+	err := json.NewDecoder(r.Body).Decode(&newuser)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(newuser.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	//for map
+	for _, users := range UserDate {
+		if users.Name != newuser.NewName {
+			users.Name = newuser.NewName
+		} else if users.Email != newuser.NewEmail {
+			users.Email = newuser.NewEmail
+		} else if users.Nickname != newuser.NewNickname {
+			users.Nickname = newuser.NewNickname
+		} else if users.BirthDate != newuser.NewBirthDate {
+			users.BirthDate = newuser.NewBirthDate
+		} else if users.Bio != newuser.NewBio {
+			users.Bio = newuser.NewBio
+		} else if users.Password != string(hashedNewPassword) {
+			users.Password = string(hashedNewPassword)
+		} else if users.Location != newuser.NewLocation {
+			users.Location = newuser.NewLocation
+		}
+		return
+
+	}
+}
+
+func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 }
 

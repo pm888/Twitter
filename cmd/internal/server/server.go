@@ -15,6 +15,8 @@ func Server() {
 	r.HandleFunc("/deleteuser", Serviceuser.DeleteUser).Methods("POST")
 	r.HandleFunc("/login", Serviceuser.LoginUsers).Methods("POST")
 	r.HandleFunc("/following", Serviceuser.Following).Methods("POST")
+	r.HandleFunc("replacemyprofile", Serviceuser.EditmyProfile).Methods("POST")
+	r.HandleFunc("/myaccount", Serviceuser.ExploreMyaccaunt).Methods("GET")
 	r.HandleFunc("/logout", Serviceuser.LogoutUser)
 	r.HandleFunc("/home", Serviceuser.Home)
 	//r.HandleFunc("/getuser", Serviceuser.GetUser).Methods("GET")
