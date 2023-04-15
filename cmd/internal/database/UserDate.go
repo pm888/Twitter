@@ -1,6 +1,7 @@
 package Serviceuser
 
 import (
+	"Twitter_like_application/cmd/internal/services"
 	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
@@ -56,6 +57,8 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "This user is alredy added")
 		return
 	} else {
+		userToken := services.CheckEmai(&newUser)
+		newUser.EmailTocken = userToken
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(newUser)
 	}
@@ -147,6 +150,9 @@ func ExploreMyaccaunt(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, user)
 		}
 	}
+
+}
+func ExploreOtherUsers() {
 
 }
 

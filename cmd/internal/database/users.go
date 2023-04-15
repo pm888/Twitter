@@ -5,14 +5,16 @@ import (
 )
 
 type Users struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Password  string `json:"password"`
-	Email     string `json:"email"`
-	BirthDate string `json:"birth_date"`
-	Nickname  string `json:"nickname"`
-	Bio       string `json:"bio"`
-	Location  string `json:"location"`
+	ID                int    `json:"id"`
+	Name              string `json:"name"`
+	Password          string `json:"password"`
+	Email             string `json:"email"`
+	EmailTocken       string
+	ConfirmEmailToken bool
+	BirthDate         string `json:"birth_date"`
+	Nickname          string `json:"nickname"`
+	Bio               string `json:"bio"`
+	Location          string `json:"location"`
 	Tweet
 	Following []int
 	Followers []int
