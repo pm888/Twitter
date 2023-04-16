@@ -57,7 +57,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "This user is alredy added")
 		return
 	} else {
-		userToken := services.CheckEmai(&newUser)
+		userToken := services.CheckEmail(&newUser)
 		newUser.EmailTocken = userToken
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(newUser)
@@ -191,7 +191,13 @@ func EditmyProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
-
+	var userResPass Users
+	err := json.NewDecoder(r.Body).Decode(&userResPass)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	services.ResetPasswordPlusEmail(&userResPass)
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
