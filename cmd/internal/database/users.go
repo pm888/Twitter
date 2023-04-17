@@ -32,12 +32,19 @@ type ReplaceMyData struct {
 }
 
 type Tweet struct {
-	ID        int       `json:"id"`
-	Author    string    `json:"author"`
-	Text      string    `json:"text"`
-	CreatedAt time.Time `json:"created_at"`
-	Like      int
-	Repost    int
+	ID                  int       `json:"id"`
+	Author              string    `json:"author"`
+	Text                string    `json:"text"`
+	CreatedAt           time.Time `json:"created_at"`
+	Like                int
+	Repost              int
+	Public              bool `json:"public"`
+	OnlyFollowers       bool `json:"only_followers"`
+	OnlyMutualFollowers bool `json:"only_mutual_followers"`
+	OnlyMe              bool `json:"only_me"`
+}
+type ReplayTweet struct {
+	Tweet
 }
 
 type DeleteUserST struct {
