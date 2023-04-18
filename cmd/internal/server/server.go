@@ -20,6 +20,7 @@ func Server() {
 	r.HandleFunc("/logout", Serviceuser.LogoutUser)
 	r.HandleFunc("/home", Serviceuser.Home)
 	r.HandleFunc("/resetpassword", Serviceuser.ResetPassword).Methods("POST")
+	r.HandleFunc("/liketweet", services.LikeTweet)
 	//r.HandleFunc("/getuser", Serviceuser.GetUser).Methods("GET")
 	http.ListenAndServe("localhost:8080", r)
 }

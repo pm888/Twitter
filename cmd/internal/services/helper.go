@@ -41,7 +41,7 @@ func CheckEmail(newUser *Serviceuser.Users) string {
 }
 
 func ConfirmEmail(token string, user *Serviceuser.Users) error {
-	for id, _ := range Serviceuser.UserDate {
+	for id, _ := range Serviceuser.UserData {
 		if user.ID == id || token == user.EmailTocken {
 			user.ConfirmEmailToken = true
 		}

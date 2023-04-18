@@ -14,20 +14,21 @@ type UserDataSTR struct {
 }
 
 var (
-	UserDate = make(map[int]*Users)
+	UserData  = make(map[int]*Users)
+	TwittData = make(map[int]*Tweet)
 )
 
 func Put(u *Users) bool {
 	//for map
-	for _, user := range UserDate {
+	for _, user := range UserData {
 		if user.Email == u.Email {
 			return false
 
 		}
 
 	}
-	u.ID = len(UserDate) + 1
-	UserDate[u.ID] = u
+	u.ID = len(UserData) + 1
+	UserData[u.ID] = u
 
 	return true
 
@@ -69,7 +70,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		usermail := r.FormValue("usermail")
 		password := r.FormValue("password")
-		for _, name := range UserDate {
+		for _, name := range UserData {
 			if name.Email == usermail || name.Password == password {
 				cookie := &http.Cookie{
 					Name:  "session",
@@ -106,9 +107,9 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//for map
-	for id, _ := range UserDate {
+	for id, _ := range UserData {
 		if deleteUser.ID == id {
-			delete(UserDate, id)
+			delete(UserData, id)
 			w.WriteHeader(http.StatusOK)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
@@ -128,10 +129,10 @@ func Following(w http.ResponseWriter, r *http.Request) {
 	writer := user.Writer
 	subscriber := user.Subscriber
 	//for map
-	for id, _ := range UserDate {
+	for id, _ := range UserData {
 		if id == subscriber {
-			UserDate[writer].Followers = append(UserDate[writer].Following, subscriber)
-			UserDate[subscriber].Following = append(UserDate[subscriber].Followers, writer)
+			UserData[writer].Followers = append(UserData[writer].Following, subscriber)
+			UserData[subscriber].Following = append(UserData[subscriber].Followers, writer)
 		}
 	}
 
@@ -144,12 +145,17 @@ func ExploreMyaccaunt(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	for id, _ := range UserDate {
+	for id, _ := range UserData {
 		if id == user.ID {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, user)
 		}
 	}
+
+}
+
+func SeeMyTimeline() {
+	//var user Users
 
 }
 func ExploreOtherUsers() {
@@ -169,7 +175,7 @@ func EditmyProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//for map
-	for _, users := range UserDate {
+	for _, users := range UserData {
 		if users.Name != newuser.NewName {
 			users.Name = newuser.NewName
 		} else if users.Email != newuser.NewEmail {
