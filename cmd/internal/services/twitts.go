@@ -28,5 +28,6 @@ func CreateTweet(w http.ResponseWriter, r *http.Request) {
 func LikeTweet(w http.ResponseWriter, r *http.Request) {
 	var tweet Serviceuser.Tweet
 	_ = json.NewDecoder(r.Body).Decode(&tweet)
+	tweet.Like++
 
 }
