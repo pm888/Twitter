@@ -31,3 +31,8 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 	tweet.Like++
 
 }
+
+func RetweetTheTweets(w http.ResponseWriter, r *http.Request) {
+	var tweet Serviceuser.Tweet
+	_ = json.NewDecoder(r.Body).Decode(&tweet)
+}
