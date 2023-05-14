@@ -1,7 +1,7 @@
 package services
 
 import (
-	Serviceuser "Twitter_like_application/cmd/internal/database"
+	"Twitter_like_application/internal/database"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -9,10 +9,27 @@ import (
 
 var Tweets map[int]Serviceuser.Tweet
 
-func GetTweets(w http.ResponseWriter, r *http.Request) {
+func GetTweetsLast100(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Tweets)
 }
+
+//func GeTweets100(tweets map[int]Serviceuser.Tweet) []Serviceuser.Tweet {
+//	var tweetSlice []Serviceuser.Tweet
+//	for _, tweet := range tweets {
+//		tweetSlice = append(tweetSlice, tweet)
+//	}
+//
+//	sort.Slice(tweetSlice, func(i, j int) bool {
+//		return tweetSlice[i].CreatedAt.After(tweetSlice[j].CreatedAt)
+//	})
+//
+//	if len(tweetSlice) > 100 {
+//		tweetSlice = tweetSlice[:100]
+//	}
+//
+//	return tweetSlice
+//}
 
 func CreateTweet(w http.ResponseWriter, r *http.Request) {
 	var tweet Serviceuser.Tweet

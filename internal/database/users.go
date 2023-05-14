@@ -9,7 +9,7 @@ type Users struct {
 	Name               string `json:"name"`
 	Password           string `json:"password"`
 	Email              string `json:"email"`
-	EmailTocken        string
+	EmailToken         string
 	ConfirmEmailToken  bool
 	ResetPasswordToken string
 	BirthDate          string `json:"birth_date"`

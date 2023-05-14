@@ -1,9 +1,11 @@
 package Serviceuser
 
 import (
-	"Twitter_like_application/cmd/internal/services"
+	"Twitter_like_application/internal/services"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"html/template"
 	"net/http"
@@ -18,25 +20,33 @@ var (
 	TwittData = make(map[int]*Tweet)
 )
 
-func Put(u *Users) bool {
-	//for map
-	for _, user := range UserData {
-		if user.Email == u.Email {
-			return false
+////for map
+//func Put(u *Users) bool {
+//	for _, user := range UserData {
+//		if user.Email == u.Email {
+//			return false
+//
+//		}
+//
+//	}
+//	u.ID = len(UserData) + 1
+//	UserData[u.ID] = u
+//
+//	return true
+//
+//}
 
-		}
-
-	}
-	u.ID = len(UserData) + 1
-	UserData[u.ID] = u
-
-	return true
-
-}
-
+// Creat user(PostgreSQL)
 func CreateUser(w http.ResponseWriter, r *http.Request) {
+	db, err := sql.Open("postgres", "postgresql://username:password@localhost/dbname?sslmode=disable")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
 	var newUser Users
-	err := json.NewDecoder(r.Body).Decode(&newUser)
+	err = json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -53,18 +63,57 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	newUser.Password = string(hashedPassword)
-	ret := Put(&newUser)
-	if ret == false {
-		fmt.Fprint(w, "This user is alredy added")
+
+	query := `INSERT INTO users (name, password, email, nickname) VALUES ($1, $2, $3, $4) RETURNING id`
+	err = db.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname).Scan(&newUser.ID)
+	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			http.Error(w, "This user is already added", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	} else {
-		userToken := services.CheckEmail(&newUser)
-		newUser.EmailTocken = userToken
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(newUser)
 	}
-	return
+
+	userToken := services.CheckEmail(&newUser)
+	newUser.EmailToken = userToken
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(newUser)
 }
+
+// Creat user(map)
+//func CreateUser(w http.ResponseWriter, r *http.Request) {
+//	var newUser Users
+//	err := json.NewDecoder(r.Body).Decode(&newUser)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusBadRequest)
+//		return
+//	}
+//
+//	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
+//		http.Error(w, "Invalid user data", http.StatusBadRequest)
+//		return
+//	}
+//
+//	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
+//	newUser.Password = string(hashedPassword)
+//	ret := Put(&newUser)
+//	if ret == false {
+//		fmt.Fprint(w, "This user is alredy added")
+//		return
+//	} else {
+//		userToken := services.CheckEmail(&newUser)
+//		newUser.EmailToken = userToken
+//		w.WriteHeader(http.StatusCreated)
+//		json.NewEncoder(w).Encode(newUser)
+//	}
+//	return
+//}
 
 func LoginUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {

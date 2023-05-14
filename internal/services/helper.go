@@ -1,7 +1,7 @@
 package services
 
 import (
-	Serviceuser "Twitter_like_application/cmd/internal/database"
+	Serviceuser2 "Twitter_like_application/internal/database"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -10,7 +10,7 @@ import (
 	"net/url"
 )
 
-func CheckEmail(newUser *Serviceuser.Users) string {
+func CheckEmail(newUser *Serviceuser2.Users) string {
 	token := make([]byte, 32)
 	_, err := rand.Read(token)
 	if err != nil {
@@ -40,9 +40,9 @@ func CheckEmail(newUser *Serviceuser.Users) string {
 	return confirmToken
 }
 
-func ConfirmEmail(token string, user *Serviceuser.Users) error {
-	for id, _ := range Serviceuser.UserData {
-		if user.ID == id || token == user.EmailTocken {
+func ConfirmEmail(token string, user *Serviceuser2.Users) error {
+	for id, _ := range Serviceuser2.UserData {
+		if user.ID == id || token == user.EmailToken {
 			user.ConfirmEmailToken = true
 		}
 	}
@@ -50,7 +50,7 @@ func ConfirmEmail(token string, user *Serviceuser.Users) error {
 	return nil
 }
 
-func ResetPasswordPlusEmail(user *Serviceuser.Users) {
+func ResetPasswordPlusEmail(user *Serviceuser2.Users) {
 	resetToken := GenerateResetToken()
 	user.ResetPasswordToken = resetToken
 	confirmURL := &url.URL{
