@@ -1,8 +1,8 @@
 package Serviceuser
 
 import (
+	"Twitter_like_application/internal/database/Mongodb"
 	"Twitter_like_application/internal/services"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/lib/pq"
@@ -38,18 +38,13 @@ var (
 
 // Creat user(PostgreSQL)
 func CreateUser(w http.ResponseWriter, r *http.Request) {
-	db, err := sql.Open("postgres", "postgresql://username:password@localhost/dbname?sslmode=disable")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
+	db, err := Mongodb.ConnectPostgresql(w)
 
 	var newUser Users
 	err = json.NewDecoder(r.Body).Decode(&newUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+
 	}
 
 	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
@@ -83,70 +78,105 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // Creat user(map)
-//func CreateUser(w http.ResponseWriter, r *http.Request) {
-//	var newUser Users
-//	err := json.NewDecoder(r.Body).Decode(&newUser)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusBadRequest)
+//
+//	func CreateUser(w http.ResponseWriter, r *http.Request) {
+//		var newUser Users
+//		err := json.NewDecoder(r.Body).Decode(&newUser)
+//		if err != nil {
+//			http.Error(w, err.Error(), http.StatusBadRequest)
+//			return
+//		}
+//
+//		if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
+//			http.Error(w, "Invalid user data", http.StatusBadRequest)
+//			return
+//		}
+//
+//		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
+//		if err != nil {
+//			http.Error(w, err.Error(), http.StatusInternalServerError)
+//			return
+//		}
+//		newUser.Password = string(hashedPassword)
+//		ret := Put(&newUser)
+//		if ret == false {
+//			fmt.Fprint(w, "This user is alredy added")
+//			return
+//		} else {
+//			userToken := services.CheckEmail(&newUser)
+//			newUser.EmailToken = userToken
+//			w.WriteHeader(http.StatusCreated)
+//			json.NewEncoder(w).Encode(newUser)
+//		}
 //		return
 //	}
 //
-//	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
-//		http.Error(w, "Invalid user data", http.StatusBadRequest)
-//		return
+// loginuser(map)
+//
+//	func LoginUsers(w http.ResponseWriter, r *http.Request) {
+//		if r.Method == "POST" {
+//			usermail := r.FormValue("usermail")
+//			password := r.FormValue("password")
+//			for _, name := range UserData {
+//				if name.Email == usermail || name.Password == password {
+//					cookie := &http.Cookie{
+//						Name:  "session",
+//						Value: "authenticated",
+//					}
+//					http.SetCookie(w, cookie)
+//					http.Redirect(w, r, "/", http.StatusSeeOther)
+//				}
+//				t, _ := template.ParseFiles("login.html")
+//				t.Execute(w, nil)
+//			}
+//		}
 //	}
 //
-//	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//	newUser.Password = string(hashedPassword)
-//	ret := Put(&newUser)
-//	if ret == false {
-//		fmt.Fprint(w, "This user is alredy added")
-//		return
-//	} else {
-//		userToken := services.CheckEmail(&newUser)
-//		newUser.EmailToken = userToken
-//		w.WriteHeader(http.StatusCreated)
-//		json.NewEncoder(w).Encode(newUser)
-//	}
-//	return
-//}
 
+// Login user postgresql
 func LoginUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		usermail := r.FormValue("usermail")
 		password := r.FormValue("password")
-		for _, name := range UserData {
-			if name.Email == usermail || name.Password == password {
-				cookie := &http.Cookie{
-					Name:  "session",
-					Value: "authenticated",
-				}
-				http.SetCookie(w, cookie)
-				http.Redirect(w, r, "/", http.StatusSeeOther)
+		db, err := Mongodb.ConnectPostgresql(w)
+
+		// Поиск пользователя в базе данных
+		query := "SELECT COUNT(*) FROM users WHERE email = $1 AND password = $2"
+		var count int
+		err = db.QueryRow(query, usermail, password).Scan(&count)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if count > 0 {
+			cookie := &http.Cookie{
+				Name:  "session",
+				Value: "authenticated",
 			}
+			http.SetCookie(w, cookie)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+		} else {
 			t, _ := template.ParseFiles("login.html")
 			t.Execute(w, nil)
 		}
 	}
 }
 
-func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != http.ErrNoCookie {
-		cookie = &http.Cookie{
-			Name:   "session",
-			Value:  "",
-			Path:   "/",
-			MaxAge: -1,
-		}
-		http.SetCookie(w, cookie)
-	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
+// logout for map
+//func LogoutUser(w http.ResponseWriter, r *http.Request) {
+//	cookie, err := r.Cookie("session")
+//	if err != http.ErrNoCookie {
+//		cookie = &http.Cookie{
+//			Name:   "session",
+//			Value:  "",
+//			Path:   "/",
+//			MaxAge: -1,
+//		}
+//		http.SetCookie(w, cookie)
+//	}
+//	http.Redirect(w, r, "/", http.StatusSeeOther)
+//}
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	var deleteUser Users

@@ -2,16 +2,28 @@ package Mongodb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"net/http"
 )
 
 type ConfigMongoDb struct {
 	MongoUser     string `mapstructure:"mongoUser"`
 	MongoPassword string `mapstructure:"mongoPassword"`
+}
+
+func ConnectPostgresql(w http.ResponseWriter) (*sql.DB, error) {
+	db, err := sql.Open("postgres", "postgresql://username:password@localhost/dbname?sslmode=disable")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	}
+	defer db.Close()
+	return db, err
 }
 
 func LoadConfig(path string) (c ConfigMongoDb, err error) {
