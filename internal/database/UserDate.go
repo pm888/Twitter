@@ -3,6 +3,7 @@ package Serviceuser
 import (
 	"Twitter_like_application/internal/database/Mongodb"
 	"Twitter_like_application/internal/services"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/lib/pq"
@@ -140,7 +141,6 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 		db, err := Mongodb.ConnectPostgresql(w)
 
-		// Поиск пользователя в базе данных
 		query := "SELECT COUNT(*) FROM users WHERE email = $1 AND password = $2"
 		var count int
 		err = db.QueryRow(query, usermail, password).Scan(&count)
@@ -177,7 +177,28 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 //	}
 //	http.Redirect(w, r, "/", http.StatusSeeOther)
 //}
+// deletuser(for map)
+//func DeleteUser(w http.ResponseWriter, r *http.Request) {
+//	var deleteUser Users
+//	err := json.NewDecoder(r.Body).Decode(&deleteUser)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusBadRequest)
+//		return
+//	}
+//	//for map
+//	for id, _ := range UserData {
+//		if deleteUser.ID == id {
+//			delete(UserData, id)
+//			w.WriteHeader(http.StatusOK)
+//		} else {
+//			w.WriteHeader(http.StatusBadRequest)
+//			return
+//		}
+//	}
+//
+//}
 
+// deleteuser postgresql
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	var deleteUser Users
 	err := json.NewDecoder(r.Body).Decode(&deleteUser)
@@ -185,17 +206,26 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	//for map
-	for id, _ := range UserData {
-		if deleteUser.ID == id {
-			delete(UserData, id)
-			w.WriteHeader(http.StatusOK)
+
+	db, err := sql.Open("postgres", "your_connection_string_here")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM users WHERE id = $1", deleteUser.ID)
+	if err != nil {
+		pqErr, ok := err.(*pq.Error)
+		if ok && pqErr.Code.Name() == "undefined_table" {
+			http.Error(w, "Table not found", http.StatusInternalServerError)
 		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 }
 
 func Following(w http.ResponseWriter, r *http.Request) {
