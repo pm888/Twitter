@@ -5,7 +5,6 @@ import (
 	"Twitter_like_application/internal/services"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"html/template"
@@ -247,20 +246,58 @@ func Following(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func ExploreMyaccaunt(w http.ResponseWriter, r *http.Request) {
+// explore my accaunt(for map)
+//
+//	func ExploreMyaccaunt(w http.ResponseWriter, r *http.Request) {
+//		var user Users
+//		err := json.NewDecoder(r.Body).Decode(&user)
+//		if err != nil {
+//			http.Error(w, err.Error(), http.StatusBadRequest)
+//			return
+//		}
+//		for id, _ := range UserData {
+//			if id == user.ID {
+//				w.WriteHeader(http.StatusOK)
+//				fmt.Fprint(w, user)
+//			}
+//		}
+//
+// }
+func ExploreMyAccount(w http.ResponseWriter, r *http.Request) {
 	var user Users
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	for id, _ := range UserData {
-		if id == user.ID {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, user)
+
+	db, err := sql.Open("postgres", "your_connection_string_here")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	query := "SELECT id, name, password, email, birth_date, nickname, bio, location FROM users WHERE id = $1"
+	row := db.QueryRow(query, user.ID)
+
+	var result Users
+	err = row.Scan(
+		&result.ID,
+		&result.Name,
+		&result.Password,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		return
 	}
 
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(result)
 }
 
 func SeeMyTimeline() {
