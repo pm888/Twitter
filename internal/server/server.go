@@ -11,7 +11,7 @@ func Server() {
 	r := mux.NewRouter()
 	//r.HandleFunc("/tweets", services.GeTweetsLast100).Methods("GET")
 	r.HandleFunc("/tweets", services.CreateTweet).Methods("POST")
-	r.HandleFunc("/addusers", Serviceuser.CreateUser).Methods("POST")
+	r.HandleFunc("/addusers", services.CreateTweet()).Methods("POST")
 	r.HandleFunc("/deleteuser", Serviceuser.DeleteUser).Methods("POST")
 	r.HandleFunc("/login", Serviceuser.LoginUsers).Methods("POST")
 	r.HandleFunc("/following", Serviceuser.Following).Methods("POST")
