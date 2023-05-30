@@ -1,19 +1,19 @@
-package Serviceuser
-
-import (
-	"database/sql"
-	"encoding/json"
-	"net/http"
-)
-
-type UserDataSTR struct {
-	UserData map[int]*Users
-}
-
-var (
-	UserData  = make(map[int]*Users)
-	TwittData = make(map[int]*Tweet)
-)
+//package Serviceuser
+//
+//import (
+//	"database/sql"
+//	"encoding/json"
+//	"net/http"
+//)
+//
+//type UserDataSTR struct {
+//	UserData map[int]*Users
+//}
+//
+//var (
+//	UserData  = make(map[int]*Users)
+//	TwittData = make(map[int]*Tweet)
+//)
 
 ////for map
 //func Put(u *Users) bool {
@@ -87,7 +87,7 @@ var (
 //	}
 //
 
-// logout for map
+//logout for map
 //func LogoutUser(w http.ResponseWriter, r *http.Request) {
 //	cookie, err := r.Cookie("session")
 //	if err != http.ErrNoCookie {
@@ -159,50 +159,50 @@ var (
 //		}
 //
 // }
-func ExploreMyAccount(w http.ResponseWriter, r *http.Request) {
-	var user Users
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	db, err := sql.Open("postgres", "your_connection_string_here")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
-
-	query := "SELECT id, name, password, email, birth_date, nickname, bio, location FROM users WHERE id = $1"
-	row := db.QueryRow(query, user.ID)
-
-	var result Users
-	err = row.Scan(
-		&result.ID,
-		&result.Name,
-		&result.Password,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "User not found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
-}
-
-func SeeMyTimeline() {
-	//var user Users
-
-}
-func ExploreOtherUsers() {
-
-}
+//func ExploreMyAccount(w http.ResponseWriter, r *http.Request) {
+//	var user Users
+//	err := json.NewDecoder(r.Body).Decode(&user)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusBadRequest)
+//		return
+//	}
+//
+//	db, err := sql.Open("postgres", "your_connection_string_here")
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
+//	defer db.Close()
+//
+//	query := "SELECT id, name, password, email, birth_date, nickname, bio, location FROM users WHERE id = $1"
+//	row := db.QueryRow(query, user.ID)
+//
+//	var result Users
+//	err = row.Scan(
+//		&result.ID,
+//		&result.Name,
+//		&result.Password,
+//	)
+//	if err != nil {
+//		if err == sql.ErrNoRows {
+//			http.Error(w, "User not found", http.StatusNotFound)
+//		} else {
+//			http.Error(w, err.Error(), http.StatusInternalServerError)
+//		}
+//		return
+//	}
+//
+//	w.WriteHeader(http.StatusOK)
+//	json.NewEncoder(w).Encode(result)
+//}
+//
+//func SeeMyTimeline() {
+//	//var user Users
+//
+//}
+//func ExploreOtherUsers() {
+//
+//}
 
 // for map
 //func EditmyProfile(w http.ResponseWriter, r *http.Request) {

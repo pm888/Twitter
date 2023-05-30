@@ -32,7 +32,8 @@ type ReplaceMyData struct {
 }
 
 type Tweet struct {
-	ID                  int       `json:"id"`
+	TweetID             int       `json:"tweet_id"`
+	UserID              int       `json:"user_id"`
 	Author              string    `json:"author"`
 	Text                string    `json:"text"`
 	CreatedAt           time.Time `json:"created_at"`

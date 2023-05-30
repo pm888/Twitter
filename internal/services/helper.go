@@ -1,16 +1,24 @@
 package services
 
 import (
-	Serviceuser2 "Twitter_like_application/internal/database"
+	Postgresql "Twitter_like_application/internal/database/postgresql"
+	Serviceuser "Twitter_like_application/internal/users"
+	"bufio"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/smtp"
 	"net/url"
+	"strconv"
+	"strings"
 )
 
-func CheckEmail(newUser *Serviceuser2.Users) string {
+var s *Postgresql.ServicePostgresql
+
+func CheckEmail(newUser *Serviceuser.Users) string {
 	token := make([]byte, 32)
 	_, err := rand.Read(token)
 	if err != nil {
@@ -40,17 +48,17 @@ func CheckEmail(newUser *Serviceuser2.Users) string {
 	return confirmToken
 }
 
-func ConfirmEmail(token string, user *Serviceuser2.Users) error {
-	for id, _ := range Serviceuser2.UserData {
-		if user.ID == id || token == user.EmailToken {
-			user.ConfirmEmailToken = true
-		}
-	}
+//func ConfirmEmail(token string, user Serviceuser.Users) error {
+//	for id, _ := range Serviceuser2.UserData {
+//		if user.ID == id || token == user.EmailToken {
+//			user.ConfirmEmailToken = true
+//		}
+//	}
+//
+//	return nil
+//}
 
-	return nil
-}
-
-func ResetPasswordPlusEmail(user *Serviceuser2.Users) {
+func ResetPasswordPlusEmail(user *Serviceuser.Users) {
 	resetToken := GenerateResetToken()
 	user.ResetPasswordToken = resetToken
 	confirmURL := &url.URL{
@@ -81,4 +89,58 @@ func GenerateResetToken() string {
 		panic(err)
 	}
 	return hex.EncodeToString(tokenBytes)
+}
+
+func ConvertStringToNumber(str string) (int, error) {
+	num, err := strconv.Atoi(str)
+	if err != nil {
+		return 0, err
+	}
+	return num, nil
+}
+
+func UserExists(userID string) bool {
+	query := "SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)"
+	var exists bool
+	err := s.DB.QueryRow(query, userID).Scan(&exists)
+	if err != nil {
+		return false
+	}
+	return exists
+}
+
+func IsUserFollowing(currentUserID, targetUserID int) bool {
+	query := "SELECT EXISTS (SELECT 1 FROM subscriptions WHERE user_id = $1 AND target_user_id = $2)"
+	var exists bool
+	err := s.DB.QueryRow(query, currentUserID, targetUserID).Scan(&exists)
+	if err != nil {
+		return false
+	}
+	return exists
+}
+func GetCurrentUserID(r *http.Request) (string, error) {
+	cookie, err := r.Cookie("session")
+	if err == http.ErrNoCookie {
+		return "", errors.New("No session cookie found")
+	} else if err != nil {
+		return "", err
+	}
+
+	userID, err := ExtractUserIDFromSessionCookie(cookie.Value)
+
+	return userID, nil
+}
+func ExtractUserIDFromSessionCookie(cookieValue string) (string, error) {
+	req, err := http.ReadRequest(bufio.NewReader(strings.NewReader("GET / HTTP/1.0\r\nCookie: session=" + cookieValue + "\r\n\r\n")))
+	if err != nil {
+		return "", err
+	}
+
+	cookie, err := req.Cookie("session")
+	if err != nil {
+		return "", err
+	}
+
+	userID := cookie.Value
+	return userID, nil
 }

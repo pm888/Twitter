@@ -1,26 +1,27 @@
 package server
 
 import (
-	"Twitter_like_application/internal/database"
-	"Twitter_like_application/internal/services"
+	Tweets "Twitter_like_application/internal/tweets"
+	Serviceuser "Twitter_like_application/internal/users"
 	"github.com/gorilla/mux"
 	"net/http"
 )
 
 func Server() {
 	r := mux.NewRouter()
-	//r.HandleFunc("/tweets", services.GeTweetsLast100).Methods("GET")
-	r.HandleFunc("/tweets", services.CreateTweet).Methods("POST")
-	r.HandleFunc("/addusers", services.CreateTweet()).Methods("POST")
-	r.HandleFunc("/deleteuser", Serviceuser.DeleteUser).Methods("POST")
+	r.HandleFunc("/addusers", Serviceuser.CreateUser).Methods("POST")
 	r.HandleFunc("/login", Serviceuser.LoginUsers).Methods("POST")
-	r.HandleFunc("/following", Serviceuser.Following).Methods("POST")
-	r.HandleFunc("replacemyprofile", Serviceuser.EditmyProfile).Methods("POST")
-	r.HandleFunc("/myaccount", Serviceuser.ExploreMyaccaunt).Methods("GET")
 	r.HandleFunc("/logout", Serviceuser.LogoutUser)
-	r.HandleFunc("/home", Serviceuser.Home)
-	r.HandleFunc("/resetpassword", Serviceuser.ResetPassword).Methods("POST")
-	r.HandleFunc("/liketweet", services.LikeTweet)
-	//r.HandleFunc("/getuser", Serviceuser.GetUser).Methods("GET")
+	r.HandleFunc("replacemyprofile", Serviceuser.EditMyProfile).Methods("POST")
+	r.HandleFunc("/myaccount", Serviceuser.GetUserProfile).Methods("GET")
+	r.HandleFunc("/tweets", Tweets.CreateTweet).Methods("POST")
+	r.HandleFunc("/tweets", Tweets.GetTweet).Methods("GET")
+	r.HandleFunc("/tweets", Tweets.UpdateTweet).Methods("POST")
+	r.HandleFunc("/tweets", Tweets.DeleteTweet).Methods("POST")
+	//r.HandleFunc("/deleteuser", Serviceuser.DeleteUser).Methods("POST")
+	//r.HandleFunc("/following", Serviceuser.Following).Methods("POST")
+	//r.HandleFunc("/home", Serviceuser.Home)
+	//r.HandleFunc("/resetpassword", Serviceuser.ResetPassword).Methods("POST")
+	//r.HandleFunc("/liketweet", services.LikeTweet)
 	http.ListenAndServe("localhost:8080", r)
 }
