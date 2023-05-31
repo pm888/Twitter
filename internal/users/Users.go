@@ -5,15 +5,15 @@ import (
 	_ "Twitter_like_application/internal/database/postgresql"
 	"Twitter_like_application/internal/services"
 	"encoding/json"
+	"fmt"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"html/template"
 	"net/http"
+	"strconv"
 )
 
-var s *Postgresql.ServicePostgresql
-
-func CreateUser(w http.ResponseWriter, r *http.Request) {
+func CreateUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	var newUser Users
 	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
 		http.Error(w, "Invalid user data", http.StatusBadRequest)
@@ -45,7 +45,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(newUser)
 }
 
-func LoginUsers(w http.ResponseWriter, r *http.Request) {
+func LoginUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	if r.Method == "POST" {
 		usermail := r.FormValue("usermail")
 		password := r.FormValue("password")
@@ -71,7 +71,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-func LogoutUser(w http.ResponseWriter, r *http.Request) {
+func LogoutUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	sessionID := getSessionIDFromRequest(r)
 	deleteSessionQuery := "DELETE FROM sessions WHERE session_id = $1"
 	_, err := s.DB.Exec(deleteSessionQuery, sessionID)
@@ -90,7 +90,7 @@ func getSessionIDFromRequest(r *http.Request) string {
 	return cookie.Value
 }
 
-func EditMyProfile(w http.ResponseWriter, r *http.Request) {
+func EditMyProfile(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	var newuser *ReplaceMyData
 
 	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(newuser.NewPassword), bcrypt.DefaultCost)
@@ -134,8 +134,8 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	services.ResetPasswordPlusEmail(&userResPass)
 }
 
-func GetUserProfile(w http.ResponseWriter, r *http.Request) {
-	userID := getCurrentUserID(w, r)
+func GetUserProfile(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+	userID := GetCurrentUserID(w, r)
 
 	query := "SELECT id, name, email, nickname FROM users WHERE id = $1"
 	row := s.DB.QueryRow(query, userID)
@@ -151,7 +151,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userProfile)
 }
 
-func getCurrentUserID(w http.ResponseWriter, r *http.Request) int {
+func GetCurrentUserID(w http.ResponseWriter, r *http.Request) int {
 	var user Users
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -161,7 +161,7 @@ func getCurrentUserID(w http.ResponseWriter, r *http.Request) int {
 	return 1
 }
 
-func FollowUser(w http.ResponseWriter, r *http.Request) {
+func FollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	currentUserID, err := services.GetCurrentUserID(r)
 	currentUserIDint, err := services.ConvertStringToNumber(currentUserID)
 
@@ -191,7 +191,7 @@ func FollowUser(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
-func UnfollowUser(w http.ResponseWriter, r *http.Request) {
+func UnfollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	currentUserID, err := services.GetCurrentUserID(r)
 
 	userID := r.FormValue("user_id")
@@ -210,7 +210,7 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetFollowers(w http.ResponseWriter, r *http.Request) {
+func GetFollowers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	userID := r.FormValue("user_id")
 	if userID == "" {
 		http.Error(w, "Missing user ID", http.StatusBadRequest)
@@ -246,7 +246,7 @@ func GetFollowers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(followers)
 }
 
-func GetFollowing(w http.ResponseWriter, r *http.Request) {
+func GetFollowing(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	userID := r.FormValue("user_id")
 	if userID == "" {
 		http.Error(w, "Missing user ID", http.StatusBadRequest)
@@ -280,4 +280,156 @@ func GetFollowing(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(following)
+}
+
+func SearchUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		http.Error(w, "Missing search query", http.StatusBadRequest)
+		return
+	}
+
+	searchQuery := "%" + query + "%"
+	query = "SELECT id, name, username FROM users WHERE name ILIKE $1 OR username ILIKE $1"
+
+	rows, err := s.DB.Query(query, searchQuery)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var users []Users
+
+	for rows.Next() {
+		var user Users
+		err := rows.Scan(&user.ID, &user.Name, &user.Name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		users = append(users, user)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
+
+func SearchTweets(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		http.Error(w, "Missing search query", http.StatusBadRequest)
+		return
+	}
+
+	searchQuery := "%" + query + "%"
+	query = "SELECT id, user_id, content FROM tweets WHERE content ILIKE $1"
+
+	rows, err := s.DB.Query(query, searchQuery)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tweets []Tweet
+
+	for rows.Next() {
+		var tweet Tweet
+		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tweets = append(tweets, tweet)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tweets)
+}
+func GetFollowingTweets(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+	currentUserID := GetCurrentUserID(w, r)
+
+	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID, s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(subscribedUserIDs) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]Tweet{})
+		return
+	}
+
+	userIDStr := ""
+	for i, userID := range subscribedUserIDs {
+		if i > 0 {
+			userIDStr += ","
+		}
+		userIDStr += strconv.Itoa(userID)
+	}
+
+	query := fmt.Sprintf("SELECT id, user_id, content FROM tweets WHERE user_id IN (%s)", userIDStr)
+
+	rows, err := s.DB.Query(query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tweets []Tweet
+
+	for rows.Next() {
+		var tweet Tweet
+		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tweets = append(tweets, tweet)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tweets)
+}
+func GetStatistics(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+	userCount, err := services.GetUserCount(s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tweetCount, err := services.GetTweetCount(s)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	statistics := struct {
+		UserCount  int `json:"user_count"`
+		TweetCount int `json:"tweet_count"`
+	}{
+		UserCount:  userCount,
+		TweetCount: tweetCount,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(statistics)
 }

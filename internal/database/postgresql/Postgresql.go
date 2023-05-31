@@ -24,16 +24,15 @@ type ServicePostgresql struct {
 }
 
 func (s *ServicePostgresql) ConnectPostgresql() error {
-	var w http.ResponseWriter
-
 	connStr := fmt.Sprintf("postgresql://%s:%s@localhost/%s?sslmode=disable", postgresUsername, postgresPassword, postgresDBName)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
 	defer db.Close()
+
+	s.DB = db
 
 	return nil
 }
