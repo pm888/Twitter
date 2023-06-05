@@ -5,15 +5,15 @@ import (
 	_ "Twitter_like_application/internal/database/postgresql"
 	"Twitter_like_application/internal/services"
 	"encoding/json"
-	"fmt"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"html/template"
 	"net/http"
-	"strconv"
 )
 
-func CreateUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+var db *Postgresql.ServicePostgresql
+
+func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var newUser Users
 	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
 		http.Error(w, "Invalid user data", http.StatusBadRequest)
@@ -28,7 +28,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePos
 	newUser.Password = string(hashedPassword)
 
 	query := `INSERT INTO users (name, password, email, nickname) VALUES ($1, $2, $3, $4) RETURNING id`
-	err = s.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname).Scan(&newUser.ID)
+	err = db.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname).Scan(&newUser.ID)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			http.Error(w, "This user is already added", http.StatusBadRequest)
@@ -45,14 +45,14 @@ func CreateUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePos
 	json.NewEncoder(w).Encode(newUser)
 }
 
-func LoginUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func LoginUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		usermail := r.FormValue("usermail")
 		password := r.FormValue("password")
 
 		query := "SELECT COUNT(*) FROM users WHERE email = $1 AND password = $2"
 		var count int
-		err := s.DB.QueryRow(query, usermail, password).Scan(&count)
+		err := db.DB.QueryRow(query, usermail, password).Scan(&count)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -71,10 +71,10 @@ func LoginUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePos
 		}
 	}
 }
-func LogoutUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	sessionID := getSessionIDFromRequest(r)
 	deleteSessionQuery := "DELETE FROM sessions WHERE session_id = $1"
-	_, err := s.DB.Exec(deleteSessionQuery, sessionID)
+	_, err := db.DB.Exec(deleteSessionQuery, sessionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -90,7 +90,7 @@ func getSessionIDFromRequest(r *http.Request) string {
 	return cookie.Value
 }
 
-func EditMyProfile(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func EditMyProfile(w http.ResponseWriter, r *http.Request) {
 	var newuser *ReplaceMyData
 
 	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(newuser.NewPassword), bcrypt.DefaultCost)
@@ -99,7 +99,7 @@ func EditMyProfile(w http.ResponseWriter, r *http.Request, s *Postgresql.Service
 		return
 	}
 
-	_, err = s.DB.Exec(`
+	_, err = db.DB.Exec(`
 		UPDATE UserData SET 
 			Name = $1,
 			Email = $2,
@@ -134,11 +134,11 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	services.ResetPasswordPlusEmail(&userResPass)
 }
 
-func GetUserProfile(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	userID := GetCurrentUserID(w, r)
 
 	query := "SELECT id, name, email, nickname FROM users WHERE id = $1"
-	row := s.DB.QueryRow(query, userID)
+	row := db.DB.QueryRow(query, userID)
 
 	var userProfile Users
 	err := row.Scan(&userProfile.ID, &userProfile.Name, &userProfile.Email, &userProfile.Nickname)
@@ -161,7 +161,7 @@ func GetCurrentUserID(w http.ResponseWriter, r *http.Request) int {
 	return 1
 }
 
-func FollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func FollowUser(w http.ResponseWriter, r *http.Request) {
 	currentUserID, err := services.GetCurrentUserID(r)
 	currentUserIDint, err := services.ConvertStringToNumber(currentUserID)
 
@@ -172,18 +172,18 @@ func FollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePos
 	}
 	targetUserIDint, err := services.ConvertStringToNumber(targetUserID)
 
-	if !services.UserExists(targetUserID) {
+	if !services.UserExists(targetUserID, db) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	if services.IsUserFollowing(currentUserIDint, targetUserIDint) {
+	if services.IsUserFollowing(currentUserIDint, targetUserIDint, db) {
 		http.Error(w, "Already following the user", http.StatusBadRequest)
 		return
 	}
 
 	query := "INSERT INTO subscriptions (user_id, target_user_id) VALUES ($1, $2)"
-	_, err = s.DB.Exec(query, currentUserID, targetUserID)
+	_, err = db.DB.Exec(query, currentUserID, targetUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -191,7 +191,7 @@ func FollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePos
 
 	w.WriteHeader(http.StatusOK)
 }
-func UnfollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	currentUserID, err := services.GetCurrentUserID(r)
 
 	userID := r.FormValue("user_id")
@@ -201,7 +201,7 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServiceP
 	}
 
 	query := "DELETE FROM subscriptions WHERE follower_id = $1 AND followee_id = $2"
-	_, err = s.DB.Exec(query, currentUserID, userID)
+	_, err = db.DB.Exec(query, currentUserID, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -210,7 +210,7 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request, s *Postgresql.ServiceP
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetFollowers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func GetFollowers(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
 	if userID == "" {
 		http.Error(w, "Missing user ID", http.StatusBadRequest)
@@ -218,7 +218,7 @@ func GetFollowers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServiceP
 	}
 
 	query := "SELECT u.id, u.username FROM users u INNER JOIN subscriptions s ON u.id = s.follower_id WHERE s.followee_id = $1"
-	rows, err := s.DB.Query(query, userID)
+	rows, err := db.DB.Query(query, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -246,7 +246,7 @@ func GetFollowers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServiceP
 	json.NewEncoder(w).Encode(followers)
 }
 
-func GetFollowing(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func GetFollowing(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
 	if userID == "" {
 		http.Error(w, "Missing user ID", http.StatusBadRequest)
@@ -254,7 +254,7 @@ func GetFollowing(w http.ResponseWriter, r *http.Request, s *Postgresql.ServiceP
 	}
 
 	query := "SELECT u.id, u.username FROM users u INNER JOIN subscriptions s ON u.id = s.followee_id WHERE s.follower_id = $1"
-	rows, err := s.DB.Query(query, userID)
+	rows, err := db.DB.Query(query, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -282,7 +282,7 @@ func GetFollowing(w http.ResponseWriter, r *http.Request, s *Postgresql.ServiceP
 	json.NewEncoder(w).Encode(following)
 }
 
-func SearchUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func SearchUsers(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
 	if query == "" {
 		http.Error(w, "Missing search query", http.StatusBadRequest)
@@ -292,7 +292,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	searchQuery := "%" + query + "%"
 	query = "SELECT id, name, username FROM users WHERE name ILIKE $1 OR username ILIKE $1"
 
-	rows, err := s.DB.Query(query, searchQuery)
+	rows, err := db.DB.Query(query, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -320,95 +320,6 @@ func SearchUsers(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	json.NewEncoder(w).Encode(users)
 }
 
-func SearchTweets(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
-	query := r.URL.Query().Get("query")
-	if query == "" {
-		http.Error(w, "Missing search query", http.StatusBadRequest)
-		return
-	}
-
-	searchQuery := "%" + query + "%"
-	query = "SELECT id, user_id, content FROM tweets WHERE content ILIKE $1"
-
-	rows, err := s.DB.Query(query, searchQuery)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var tweets []Tweet
-
-	for rows.Next() {
-		var tweet Tweet
-		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tweets = append(tweets, tweet)
-	}
-
-	if err := rows.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tweets)
-}
-func GetFollowingTweets(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
-	currentUserID := GetCurrentUserID(w, r)
-
-	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID, s)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if len(subscribedUserIDs) == 0 {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]Tweet{})
-		return
-	}
-
-	userIDStr := ""
-	for i, userID := range subscribedUserIDs {
-		if i > 0 {
-			userIDStr += ","
-		}
-		userIDStr += strconv.Itoa(userID)
-	}
-
-	query := fmt.Sprintf("SELECT id, user_id, content FROM tweets WHERE user_id IN (%s)", userIDStr)
-
-	rows, err := s.DB.Query(query)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var tweets []Tweet
-
-	for rows.Next() {
-		var tweet Tweet
-		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tweets = append(tweets, tweet)
-	}
-
-	if err := rows.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tweets)
-}
 func GetStatistics(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
 	userCount, err := services.GetUserCount(s)
 	if err != nil {

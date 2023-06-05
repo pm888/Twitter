@@ -5,11 +5,15 @@ import (
 	"Twitter_like_application/internal/services"
 	Serviceuser "Twitter_like_application/internal/users"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 )
 
-func CreateTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+var db *Postgresql.ServicePostgresql
+
+func CreateTweet(w http.ResponseWriter, r *http.Request) {
 	var newTweet Serviceuser.Tweet
 	err := json.NewDecoder(r.Body).Decode(&newTweet)
 	if err != nil {
@@ -17,7 +21,7 @@ func CreateTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 		return
 	}
 	query := "INSERT INTO tweets (user_id, content, created_at) VALUES ($1, $2, $3) RETURNING id"
-	err = s.DB.QueryRow(query, newTweet.UserID, newTweet.Text, time.Now()).Scan(&newTweet.TweetID)
+	err = db.DB.QueryRow(query, newTweet.UserID, newTweet.Text, time.Now()).Scan(&newTweet.TweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -26,7 +30,7 @@ func CreateTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	json.NewEncoder(w).Encode(newTweet)
 }
 
-func GetTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func GetTweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.URL.Query().Get("tweet_id")
 	if tweetID == "" {
 		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
@@ -35,7 +39,7 @@ func GetTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostg
 
 	query := "SELECT id, user_id, content FROM tweets WHERE id = $1"
 	var tweet Serviceuser.Tweet
-	err := s.DB.QueryRow(query, tweetID).Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+	err := db.DB.QueryRow(query, tweetID).Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -45,7 +49,7 @@ func GetTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostg
 	json.NewEncoder(w).Encode(tweet)
 }
 
-func UpdateTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func UpdateTweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.URL.Query().Get("tweet_id")
 	newContent := r.FormValue("text")
 	intId, err := services.ConvertStringToNumber(tweetID)
@@ -58,7 +62,7 @@ func UpdateTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 		return
 	}
 	query := "UPDATE tweets SET content = $1 WHERE id = $2"
-	result, err := s.DB.Exec(query, newContent, tweetID)
+	result, err := db.DB.Exec(query, newContent, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -73,7 +77,7 @@ func UpdateTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedTweet)
 }
-func DeleteTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func DeleteTweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.URL.Query().Get("tweet_id")
 	if tweetID == "" {
 		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
@@ -81,7 +85,7 @@ func DeleteTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	}
 
 	query := "DELETE FROM tweets WHERE id = $1"
-	result, err := s.DB.Exec(query, tweetID)
+	result, err := db.DB.Exec(query, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -96,7 +100,7 @@ func DeleteTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	w.WriteHeader(http.StatusOK)
 }
 
-func LikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func LikeTweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.FormValue("tweet_id")
 	if tweetID == "" {
 		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
@@ -107,7 +111,7 @@ func LikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePost
 
 	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = s.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err = db.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -118,14 +122,14 @@ func LikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePost
 	}
 
 	query = "INSERT INTO likes (user_id, tweet_id) VALUES ($1, $2)"
-	_, err = s.DB.Exec(query, userID, tweetID)
+	_, err = db.DB.Exec(query, userID, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
-func UnlikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.FormValue("tweet_id")
 	if tweetID == "" {
 		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
@@ -136,7 +140,7 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 
 	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = s.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err = db.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -147,7 +151,7 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 	}
 
 	query = "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	_, err = s.DB.Exec(query, userID, tweetID)
+	_, err = db.DB.Exec(query, userID, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -155,7 +159,7 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePo
 
 	w.WriteHeader(http.StatusOK)
 }
-func Retweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func Retweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.FormValue("tweet_id")
 	if tweetID == "" {
 		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
@@ -166,7 +170,7 @@ func Retweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgr
 
 	query := "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = s.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err = db.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -185,10 +189,99 @@ func Retweet(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgr
 
 	w.WriteHeader(http.StatusOK)
 }
-func GetPopularTweets(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
+func GetPopularTweets(w http.ResponseWriter, r *http.Request) {
 	query := "SELECT id, user_id, content FROM tweets ORDER BY likes DESC LIMIT 10"
 
-	rows, err := s.DB.Query(query)
+	rows, err := db.DB.Query(query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tweets []Serviceuser.Tweet
+
+	for rows.Next() {
+		var tweet Serviceuser.Tweet
+		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tweets = append(tweets, tweet)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tweets)
+}
+func SearchTweets(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		http.Error(w, "Missing search query", http.StatusBadRequest)
+		return
+	}
+
+	searchQuery := "%" + query + "%"
+	query = "SELECT id, user_id, content FROM tweets WHERE content ILIKE $1"
+
+	rows, err := db.DB.Query(query, searchQuery)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tweets []Serviceuser.Tweet
+
+	for rows.Next() {
+		var tweet Serviceuser.Tweet
+		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tweets = append(tweets, tweet)
+	}
+
+	if err := rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tweets)
+}
+func GetFollowingTweets(w http.ResponseWriter, r *http.Request) {
+	currentUserID := services.GetCurrentUserID(w, r)
+
+	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID, db)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(subscribedUserIDs) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]Serviceuser.Tweet{})
+		return
+	}
+
+	userIDStr := ""
+	for i, userID := range subscribedUserIDs {
+		if i > 0 {
+			userIDStr += ","
+		}
+		userIDStr += strconv.Itoa(userID)
+	}
+
+	query := fmt.Sprintf("SELECT id, user_id, content FROM tweets WHERE user_id IN (%s)", userIDStr)
+
+	rows, err := db.DB.Query(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
