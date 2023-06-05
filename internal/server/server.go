@@ -3,12 +3,14 @@ package server
 import (
 	Tweets "Twitter_like_application/internal/tweets"
 	Serviceuser "Twitter_like_application/internal/users"
+	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 )
 
 func Server() {
 	r := mux.NewRouter()
+	fmt.Println("Server was run", "localhost:8080")
 	r.HandleFunc("/getstatistic", Serviceuser.GetStatistics).Methods("GET")
 	r.HandleFunc("/addusers", Serviceuser.CreateUser).Methods("POST")
 	r.HandleFunc("/login", Serviceuser.LoginUsers).Methods("POST")

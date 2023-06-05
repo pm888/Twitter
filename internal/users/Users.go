@@ -4,11 +4,16 @@ import (
 	Postgresql "Twitter_like_application/internal/database/postgresql"
 	_ "Twitter_like_application/internal/database/postgresql"
 	"Twitter_like_application/internal/services"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"html/template"
 	"net/http"
+	"net/smtp"
+	"net/url"
 )
 
 var db *Postgresql.ServicePostgresql
@@ -38,7 +43,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userToken := services.CheckEmail(&newUser)
+	userToken := CheckEmail(&newUser)
 	newUser.EmailToken = userToken
 
 	w.WriteHeader(http.StatusCreated)
@@ -131,7 +136,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	services.ResetPasswordPlusEmail(&userResPass)
+	ResetPasswordPlusEmail(&userResPass)
 }
 
 func GetUserProfile(w http.ResponseWriter, r *http.Request) {
@@ -320,14 +325,14 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-func GetStatistics(w http.ResponseWriter, r *http.Request, s *Postgresql.ServicePostgresql) {
-	userCount, err := services.GetUserCount(s)
+func GetStatistics(w http.ResponseWriter, r *http.Request) {
+	userCount, err := services.GetUserCount(db)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	tweetCount, err := services.GetTweetCount(s)
+	tweetCount, err := services.GetTweetCount(db)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -343,4 +348,56 @@ func GetStatistics(w http.ResponseWriter, r *http.Request, s *Postgresql.Service
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(statistics)
+}
+func CheckEmail(newUser *Users) string {
+	token := make([]byte, 32)
+	_, err := rand.Read(token)
+	if err != nil {
+		return ""
+	}
+	confirmToken := base64.URLEncoding.EncodeToString(token)
+
+	confirmURL := &url.URL{
+		Scheme: "http",
+		Host:   "test.com",
+		Path:   "/confirm-email",
+		RawQuery: url.Values{
+			"token": {confirmToken},
+		}.Encode(),
+	}
+	to := newUser.Email
+	subject := "Confirment your email"
+	body := fmt.Sprintf("Confirment email: click this link:\n%s", confirmURL.String())
+
+	auth := smtp.PlainAuth("", "your email", "password", "your site/token")
+
+	err = smtp.SendMail("your email:587", auth, "your site/token", []string{to}, []byte(fmt.Sprintf("Subject: %s\n\n%s", subject, body)))
+	if err != nil {
+		return ""
+	}
+
+	return confirmToken
+}
+func ResetPasswordPlusEmail(user *Users) {
+	resetToken := services.GenerateResetToken()
+	user.ResetPasswordToken = resetToken
+	confirmURL := &url.URL{
+		Scheme: "http",
+		Host:   "test.com",
+		Path:   "/reset-password",
+		RawQuery: url.Values{
+			"token": {resetToken},
+		}.Encode(),
+	}
+	to := user.Email
+	subject := "Reset your password"
+	body := fmt.Sprintf("Reset your password: click this link:\n%s", confirmURL.String())
+
+	var auth = smtp.PlainAuth("", "your email", "password", "your site/token")
+	err := smtp.SendMail("your email:587", auth, "your site/token", []string{to}, []byte(fmt.Sprintf("Subject: %s\n\n%s", subject, body)))
+	if err != nil {
+		return
+	}
+	return
+
 }

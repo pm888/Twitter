@@ -181,7 +181,7 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = "INSERT INTO retweets (user_id, tweet_id, created_at) VALUES ($1, $2, $3)"
-	_, err = s.DB.Exec(query, userID, tweetID, time.Now())
+	_, err = db.DB.Exec(query, userID, tweetID, time.Now())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -257,7 +257,7 @@ func SearchTweets(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tweets)
 }
 func GetFollowingTweets(w http.ResponseWriter, r *http.Request) {
-	currentUserID := services.GetCurrentUserID(w, r)
+	currentUserID, err := services.GetCurrentUserID(r)
 
 	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID, db)
 	if err != nil {
