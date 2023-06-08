@@ -1,7 +1,7 @@
 package services
 
 import (
-	Postgresql "Twitter_like_application/internal/database/postgresql"
+	Postgresql "Twitter_like_application/internal/database/pg"
 	//Serviceuser "Twitter_like_application/internal/users"
 
 	"bufio"
@@ -31,20 +31,20 @@ func ConvertStringToNumber(str string) (int, error) {
 	return num, nil
 }
 
-func UserExists(userID string, s *Postgresql.ServicePostgresql) bool {
+func UserExists(userID string) bool {
 	query := "SELECT EXISTS (SELECT 1 FROM users WHERE id = $1)"
 	var exists bool
-	err := s.DB.QueryRow(query, userID).Scan(&exists)
+	err := Postgresql.DB.QueryRow(query, userID).Scan(&exists)
 	if err != nil {
 		return false
 	}
 	return exists
 }
 
-func IsUserFollowing(currentUserID, targetUserID int, s *Postgresql.ServicePostgresql) bool {
+func IsUserFollowing(currentUserID, targetUserID int) bool {
 	query := "SELECT EXISTS (SELECT 1 FROM subscriptions WHERE user_id = $1 AND target_user_id = $2)"
 	var exists bool
-	err := s.DB.QueryRow(query, currentUserID, targetUserID).Scan(&exists)
+	err := Postgresql.DB.QueryRow(query, currentUserID, targetUserID).Scan(&exists)
 	if err != nil {
 		return false
 	}
@@ -77,9 +77,9 @@ func ExtractUserIDFromSessionCookie(cookieValue string) (string, error) {
 	userID := cookie.Value
 	return userID, nil
 }
-func GetSubscribedUserIDs(userID string, s *Postgresql.ServicePostgresql) ([]int, error) {
+func GetSubscribedUserIDs(userID string) ([]int, error) {
 	query := "SELECT subscribed_user_id FROM subscriptions WHERE user_id = $1"
-	rows, err := s.DB.Query(query, userID)
+	rows, err := Postgresql.DB.Query(query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -102,20 +102,20 @@ func GetSubscribedUserIDs(userID string, s *Postgresql.ServicePostgresql) ([]int
 
 	return subscribedUserIDs, nil
 }
-func GetUserCount(s *Postgresql.ServicePostgresql) (int, error) {
+func GetUserCount() (int, error) {
 	query := "SELECT COUNT(*) FROM users"
 	var count int
-	err := s.DB.QueryRow(query).Scan(&count)
+	err := Postgresql.DB.QueryRow(query).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-func GetTweetCount(s *Postgresql.ServicePostgresql) (int, error) {
+func GetTweetCount() (int, error) {
 	query := "SELECT COUNT(*) FROM tweets"
 	var count int
-	err := s.DB.QueryRow(query).Scan(&count)
+	err := Postgresql.DB.QueryRow(query).Scan(&count)
 	if err != nil {
 		return 0, err
 	}

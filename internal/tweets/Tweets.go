@@ -1,7 +1,8 @@
-package Tweets
+package tweets
 
 import (
-	Postgresql "Twitter_like_application/internal/database/postgresql"
+	"Twitter_like_application/internal/database/pg"
+	_ "Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
 	Serviceuser "Twitter_like_application/internal/users"
 	"encoding/json"
@@ -11,8 +12,6 @@ import (
 	"time"
 )
 
-var db *Postgresql.ServicePostgresql
-
 func CreateTweet(w http.ResponseWriter, r *http.Request) {
 	var newTweet Serviceuser.Tweet
 	err := json.NewDecoder(r.Body).Decode(&newTweet)
@@ -21,7 +20,7 @@ func CreateTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := "INSERT INTO tweets (user_id, content, created_at) VALUES ($1, $2, $3) RETURNING id"
-	err = db.DB.QueryRow(query, newTweet.UserID, newTweet.Text, time.Now()).Scan(&newTweet.TweetID)
+	err = pg.DB.QueryRow(query, newTweet.UserID, newTweet.Text, time.Now()).Scan(&newTweet.TweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -39,7 +38,7 @@ func GetTweet(w http.ResponseWriter, r *http.Request) {
 
 	query := "SELECT id, user_id, content FROM tweets WHERE id = $1"
 	var tweet Serviceuser.Tweet
-	err := db.DB.QueryRow(query, tweetID).Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+	err := pg.DB.QueryRow(query, tweetID).Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -62,7 +61,7 @@ func UpdateTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := "UPDATE tweets SET content = $1 WHERE id = $2"
-	result, err := db.DB.Exec(query, newContent, tweetID)
+	result, err := pg.DB.Exec(query, newContent, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -85,7 +84,7 @@ func DeleteTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := "DELETE FROM tweets WHERE id = $1"
-	result, err := db.DB.Exec(query, tweetID)
+	result, err := pg.DB.Exec(query, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -111,7 +110,7 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 
 	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = db.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -122,7 +121,7 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = "INSERT INTO likes (user_id, tweet_id) VALUES ($1, $2)"
-	_, err = db.DB.Exec(query, userID, tweetID)
+	_, err = pg.DB.Exec(query, userID, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -140,7 +139,7 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 
 	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = db.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -151,7 +150,7 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	_, err = db.DB.Exec(query, userID, tweetID)
+	_, err = pg.DB.Exec(query, userID, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -170,7 +169,7 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 
 	query := "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = db.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -181,7 +180,7 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = "INSERT INTO retweets (user_id, tweet_id, created_at) VALUES ($1, $2, $3)"
-	_, err = db.DB.Exec(query, userID, tweetID, time.Now())
+	_, err = pg.DB.Exec(query, userID, tweetID, time.Now())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -192,7 +191,7 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 func GetPopularTweets(w http.ResponseWriter, r *http.Request) {
 	query := "SELECT id, user_id, content FROM tweets ORDER BY likes DESC LIMIT 10"
 
-	rows, err := db.DB.Query(query)
+	rows, err := pg.DB.Query(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -229,7 +228,7 @@ func SearchTweets(w http.ResponseWriter, r *http.Request) {
 	searchQuery := "%" + query + "%"
 	query = "SELECT id, user_id, content FROM tweets WHERE content ILIKE $1"
 
-	rows, err := db.DB.Query(query, searchQuery)
+	rows, err := pg.DB.Query(query, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -259,7 +258,7 @@ func SearchTweets(w http.ResponseWriter, r *http.Request) {
 func GetFollowingTweets(w http.ResponseWriter, r *http.Request) {
 	currentUserID, err := services.GetCurrentUserID(r)
 
-	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID, db)
+	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -281,7 +280,7 @@ func GetFollowingTweets(w http.ResponseWriter, r *http.Request) {
 
 	query := fmt.Sprintf("SELECT id, user_id, content FROM tweets WHERE user_id IN (%s)", userIDStr)
 
-	rows, err := db.DB.Query(query)
+	rows, err := pg.DB.Query(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

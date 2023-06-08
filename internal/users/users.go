@@ -1,8 +1,8 @@
-package Serviceuser
+package users
 
 import (
-	Postgresql "Twitter_like_application/internal/database/postgresql"
-	_ "Twitter_like_application/internal/database/postgresql"
+	_ "Twitter_like_application/internal/database/pg"
+	pg "Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
 	"crypto/rand"
 	"encoding/base64"
@@ -15,8 +15,6 @@ import (
 	"net/smtp"
 	"net/url"
 )
-
-var db *Postgresql.ServicePostgresql
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var newUser Users
@@ -33,7 +31,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	newUser.Password = string(hashedPassword)
 
 	query := `INSERT INTO users (name, password, email, nickname) VALUES ($1, $2, $3, $4) RETURNING id`
-	err = db.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname).Scan(&newUser.ID)
+	err = pg.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname).Scan(&newUser.ID)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			http.Error(w, "This user is already added", http.StatusBadRequest)
@@ -57,7 +55,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 
 		query := "SELECT COUNT(*) FROM users WHERE email = $1 AND password = $2"
 		var count int
-		err := db.DB.QueryRow(query, usermail, password).Scan(&count)
+		err := pg.DB.QueryRow(query, usermail, password).Scan(&count)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -79,7 +77,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	sessionID := getSessionIDFromRequest(r)
 	deleteSessionQuery := "DELETE FROM sessions WHERE session_id = $1"
-	_, err := db.DB.Exec(deleteSessionQuery, sessionID)
+	_, err := pg.DB.Exec(deleteSessionQuery, sessionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -104,7 +102,7 @@ func EditMyProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.DB.Exec(`
+	_, err = pg.DB.Exec(`
 		UPDATE UserData SET 
 			Name = $1,
 			Email = $2,
@@ -143,7 +141,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	userID := GetCurrentUserID(w, r)
 
 	query := "SELECT id, name, email, nickname FROM users WHERE id = $1"
-	row := db.DB.QueryRow(query, userID)
+	row := pg.DB.QueryRow(query, userID)
 
 	var userProfile Users
 	err := row.Scan(&userProfile.ID, &userProfile.Name, &userProfile.Email, &userProfile.Nickname)
@@ -177,18 +175,18 @@ func FollowUser(w http.ResponseWriter, r *http.Request) {
 	}
 	targetUserIDint, err := services.ConvertStringToNumber(targetUserID)
 
-	if !services.UserExists(targetUserID, db) {
+	if !services.UserExists(targetUserID) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	if services.IsUserFollowing(currentUserIDint, targetUserIDint, db) {
+	if services.IsUserFollowing(currentUserIDint, targetUserIDint) {
 		http.Error(w, "Already following the user", http.StatusBadRequest)
 		return
 	}
 
 	query := "INSERT INTO subscriptions (user_id, target_user_id) VALUES ($1, $2)"
-	_, err = db.DB.Exec(query, currentUserID, targetUserID)
+	_, err = pg.DB.Exec(query, currentUserID, targetUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -206,7 +204,7 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := "DELETE FROM subscriptions WHERE follower_id = $1 AND followee_id = $2"
-	_, err = db.DB.Exec(query, currentUserID, userID)
+	_, err = pg.DB.Exec(query, currentUserID, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -223,7 +221,7 @@ func GetFollowers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := "SELECT u.id, u.username FROM users u INNER JOIN subscriptions s ON u.id = s.follower_id WHERE s.followee_id = $1"
-	rows, err := db.DB.Query(query, userID)
+	rows, err := pg.DB.Query(query, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -259,7 +257,7 @@ func GetFollowing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := "SELECT u.id, u.username FROM users u INNER JOIN subscriptions s ON u.id = s.followee_id WHERE s.follower_id = $1"
-	rows, err := db.DB.Query(query, userID)
+	rows, err := pg.DB.Query(query, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -297,7 +295,7 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 	searchQuery := "%" + query + "%"
 	query = "SELECT id, name, username FROM users WHERE name ILIKE $1 OR username ILIKE $1"
 
-	rows, err := db.DB.Query(query, searchQuery)
+	rows, err := pg.DB.Query(query, searchQuery)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -326,13 +324,13 @@ func SearchUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStatistics(w http.ResponseWriter, r *http.Request) {
-	userCount, err := services.GetUserCount(db)
+	userCount, err := services.GetUserCount()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	tweetCount, err := services.GetTweetCount(db)
+	tweetCount, err := services.GetTweetCount()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -1,4 +1,4 @@
-package Serviceuser
+package users
 
 import (
 	"time"
