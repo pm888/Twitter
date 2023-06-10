@@ -88,7 +88,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		cookie := &http.Cookie{
 			Name:     "session",
 			Value:    sessionID,
-			Expires:  time.Now().Add(time.Hour * 24),
+			Expires:  time.Now().AddDate(0, 2, 0),
 			HttpOnly: true,
 			Path:     "/",
 		}
