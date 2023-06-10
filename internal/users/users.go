@@ -4,6 +4,7 @@ import (
 	_ "Twitter_like_application/internal/database/pg"
 	pg "Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
@@ -18,6 +19,36 @@ import (
 	"strconv"
 	"time"
 )
+
+func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+
+	}
+
+	sessionID := cookie.Value
+
+	query := "SELECT id FROM users_tweeter WHERE logintoken = $1"
+	var userID int
+	err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	}
+
+	ctx := context.WithValue(r.Context(), "userID", userID)
+	r = r.WithContext(ctx)
+
+	next.ServeHTTP(w, r)
+	return
+}
+
+func AuthHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleAuthenticatedRequest(w, r, next)
+	})
+}
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	newUser := &Users{}
