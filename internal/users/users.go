@@ -5,20 +5,39 @@ import (
 	pg "Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
-	"html/template"
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"strconv"
+	"time"
 )
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
-	var newUser Users
-	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.Nickname == "" {
+	newUser := &Users{}
+	err := json.NewDecoder(r.Body).Decode(newUser)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	query := `SELECT id FROM users_tweeter WHERE email = $1`
+	var existingUserID int
+	err = pg.DB.QueryRow(query, newUser.Email).Scan(&existingUserID)
+	if err == nil {
+		http.Error(w, "User with this email already exists", http.StatusBadRequest)
+		return
+	} else if err != sql.ErrNoRows {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" {
 		http.Error(w, "Invalid user data", http.StatusBadRequest)
 		return
 	}
@@ -29,9 +48,8 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	newUser.Password = string(hashedPassword)
-
-	query := `INSERT INTO users (name, password, email, nickname) VALUES ($1, $2, $3, $4) RETURNING id`
-	err = pg.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname).Scan(&newUser.ID)
+	query = `INSERT INTO users_tweeter (name, password, email, nickname, location, bio, birthdate) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	err = pg.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname, newUser.Location, newUser.Bio, newUser.BirthDate).Scan(&newUser.ID)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 			http.Error(w, "This user is already added", http.StatusBadRequest)
@@ -41,7 +59,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userToken := CheckEmail(&newUser)
+	userToken := CheckEmail(newUser)
 	newUser.EmailToken = userToken
 
 	w.WriteHeader(http.StatusCreated)
@@ -49,31 +67,59 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginUsers(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		usermail := r.FormValue("usermail")
-		password := r.FormValue("password")
+	user := &Users{}
+	err := json.NewDecoder(r.Body).Decode(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	query := "SELECT password FROM users_tweeter WHERE email = $1"
+	var savedPassword string
+	err = pg.DB.QueryRow(query, user.Email).Scan(&savedPassword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-		query := "SELECT COUNT(*) FROM users WHERE email = $1 AND password = $2"
-		var count int
-		err := pg.DB.QueryRow(query, usermail, password).Scan(&count)
+	err = bcrypt.CompareHashAndPassword([]byte(savedPassword), []byte(user.Password))
+	if err == nil {
+		sessionID := uuid.New().String()
+
+		cookie := &http.Cookie{
+			Name:     "session",
+			Value:    sessionID,
+			Expires:  time.Now().Add(time.Hour * 24),
+			HttpOnly: true,
+			Path:     "/",
+		}
+		http.SetCookie(w, cookie)
+
+		updateQuery := "UPDATE users_tweeter SET logintoken = $1 WHERE email = $2"
+		_, err = pg.DB.Exec(updateQuery, sessionID, user.Email)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if count > 0 {
-			cookie := &http.Cookie{
-				Name:  "session",
-				Value: "authenticated",
-			}
-			http.SetCookie(w, cookie)
-			http.Redirect(w, r, "/", http.StatusSeeOther)
-		} else {
-			t, _ := template.ParseFiles("login.html")
-			t.Execute(w, nil)
+		response := map[string]interface{}{
+			"status":  "success",
+			"message": "Authentication successful",
 		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	} else if err == bcrypt.ErrMismatchedHashAndPassword {
+		response := map[string]interface{}{
+			"status":  "error",
+			"message": "Invalid email or password",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	} else {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
+
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	sessionID := getSessionIDFromRequest(r)
 	deleteSessionQuery := "DELETE FROM sessions WHERE session_id = $1"
@@ -165,52 +211,75 @@ func GetCurrentUserID(w http.ResponseWriter, r *http.Request) int {
 }
 
 func FollowUser(w http.ResponseWriter, r *http.Request) {
-	currentUserID, err := services.GetCurrentUserID(r)
-	currentUserIDint, err := services.ConvertStringToNumber(currentUserID)
-
-	targetUserID := r.FormValue("user_id")
-	if targetUserID == "" {
-		http.Error(w, "Missing target user ID", http.StatusBadRequest)
-		return
-	}
-	targetUserIDint, err := services.ConvertStringToNumber(targetUserID)
-
-	if !services.UserExists(targetUserID) {
-		http.Error(w, "User not found", http.StatusNotFound)
+	var usersFollow UsersFollow
+	err := json.NewDecoder(r.Body).Decode(&usersFollow)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if services.IsUserFollowing(currentUserIDint, targetUserIDint) {
-		http.Error(w, "Already following the user", http.StatusBadRequest)
+	currentUserID, err := strconv.Atoi(usersFollow.ID1)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	query := "INSERT INTO subscriptions (user_id, target_user_id) VALUES ($1, $2)"
-	_, err = pg.DB.Exec(query, currentUserID, targetUserID)
+	targetUserID, err := strconv.Atoi(usersFollow.ID2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var count int
+	err = pg.DB.QueryRow("SELECT COUNT(*) FROM followers_subscriptions WHERE follower_id = $1 AND subscription_id = $2", currentUserID, targetUserID).Scan(&count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if count > 0 {
+		http.Error(w, "User is already subscribed to the target user", http.StatusBadRequest)
+		return
+	}
+
+	_, err = pg.DB.Exec("INSERT INTO followers_subscriptions (follower_id, subscription_id) VALUES ($1, $2)", currentUserID, targetUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	fmt.Println("Done")
 }
-func UnfollowUser(w http.ResponseWriter, r *http.Request) {
-	currentUserID, err := services.GetCurrentUserID(r)
 
-	userID := r.FormValue("user_id")
-	if userID == "" {
-		http.Error(w, "Missing user ID", http.StatusBadRequest)
+func UnfollowUser(w http.ResponseWriter, r *http.Request) {
+	var usersFollow UsersFollow
+	err := json.NewDecoder(r.Body).Decode(&usersFollow)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	query := "DELETE FROM subscriptions WHERE follower_id = $1 AND followee_id = $2"
-	_, err = pg.DB.Exec(query, currentUserID, userID)
+	currentUserID, err := strconv.Atoi(usersFollow.ID1)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	targetUserID, err := strconv.Atoi(usersFollow.ID2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = pg.DB.Exec("DELETE FROM followers_subscriptions WHERE follower_id = $1 AND subscription_id = $2", currentUserID, targetUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	fmt.Println("Done")
 }
 
 func GetFollowers(w http.ResponseWriter, r *http.Request) {

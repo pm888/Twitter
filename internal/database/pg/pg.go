@@ -3,24 +3,23 @@ package pg
 import (
 	"database/sql"
 	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
-	postgresUsername = "your_username"
-	postgresPassword = "your_password"
-	postgresDBName   = "your_dbname"
+	postgresUsername = "postgres"
+	postgresPassword = "postgrespw"
+	postgresDBip     = "localhost"
+	postgresDBName   = "tweeter"
 )
 
 var DB *sql.DB
 
 type ServicePostgresql struct {
-	DBClient *mongo.Client
-	DB       *sql.DB
+	DB *sql.DB
 }
 
 func ConnectPostgresql() error {
-	connStr := fmt.Sprintf("postgresql://%s:%s@localhost/%s?sslmode=disable", postgresUsername, postgresPassword, postgresDBName)
+	connStr := fmt.Sprintf("postgresql://%s:%s@%s:55003/%s?sslmode=disable", postgresUsername, postgresPassword, postgresDBip, postgresDBName)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -28,6 +27,7 @@ func ConnectPostgresql() error {
 	}
 
 	DB = db
+	fmt.Println("PG ran....", connStr)
 
 	return nil
 }
