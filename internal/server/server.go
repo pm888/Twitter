@@ -25,7 +25,7 @@ func Server() {
 	r.HandleFunc("/searchusers", Serviceuser.SearchUsers).Methods("GET")
 	r.HandleFunc("/searchtweet", Tweets.SearchTweets).Methods("GET")
 	r.HandleFunc("/getfollowingtweet", Tweets.GetFollowingTweets).Methods("GET")
-	r.HandleFunc("/tweets_create", Tweets.CreateTweet).Methods("POST")
+	http.Handle("/createtweet", Serviceuser.AuthHandler(http.HandlerFunc(Tweets.CreateTweet)))
 	r.HandleFunc("/tweets_gertweet", Tweets.GetTweet).Methods("GET")
 	r.HandleFunc("/tweets_gerpopulartweet", Tweets.GetPopularTweets).Methods("GET")
 	r.HandleFunc("/tweets_rettweer", Tweets.Retweet).Methods("POST")
