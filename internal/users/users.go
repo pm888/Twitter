@@ -119,7 +119,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		cookie := &http.Cookie{
 			Name:     "session",
 			Value:    sessionID,
-			Expires:  time.Now().AddDate(0, 2, 0),
+			Expires:  time.Now().AddDate(0, 0, 30),
 			HttpOnly: true,
 			Path:     "/",
 		}
@@ -152,22 +152,20 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	sessionID := getSessionIDFromRequest(r)
-	deleteSessionQuery := "DELETE FROM sessions WHERE session_id = $1"
-	_, err := pg.DB.Exec(deleteSessionQuery, sessionID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	cookie := &http.Cookie{
+		Name:    "session",
+		Value:   "",
+		Expires: time.Now().AddDate(0, 0, -1),
+		Path:    "/",
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
+	http.SetCookie(w, cookie)
 
-func getSessionIDFromRequest(r *http.Request) string {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		return ""
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Logged out successfully",
 	}
-	return cookie.Value
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func EditMyProfile(w http.ResponseWriter, r *http.Request) {
