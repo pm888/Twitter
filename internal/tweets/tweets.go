@@ -5,7 +5,6 @@ import (
 	_ "Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
 	Serviceuser "Twitter_like_application/internal/users"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -27,9 +26,9 @@ func CreateTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tokenString := cookie.Value
-	ctx := context.Background()
+
 	query := "SELECT logintoken FROM users_tweeter WHERE id = $1"
-	stmt, err := pg.DB.PrepareContext(ctx, query)
+	stmt, err := pg.DB.PrepareContext(r.Context(), query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -37,7 +36,7 @@ func CreateTweet(w http.ResponseWriter, r *http.Request) {
 	defer stmt.Close()
 
 	var dbToken string
-	err = stmt.QueryRowContext(ctx, newTweet.UserID).Scan(&dbToken)
+	err = stmt.QueryRowContext(r.Context(), newTweet.UserID).Scan(&dbToken)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -50,7 +49,7 @@ func CreateTweet(w http.ResponseWriter, r *http.Request) {
 
 	query = `INSERT INTO tweets (user_id, author, text, created_at, like_count, repost, public, only_followers, only_mutual_followers, only_me)
 	 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING tweet_id`
-	err = pg.DB.QueryRow(query, newTweet.UserID, newTweet.Author, newTweet.Text, time.Now(), newTweet.LikeCount, newTweet.Repost, newTweet.Public, newTweet.OnlyFollowers, newTweet.OnlyMutualFollowers, newTweet.OnlyMe).Scan(&newTweet.TweetID)
+	err = pg.DB.QueryRowContext(r.Context(), query, newTweet.UserID, newTweet.Author, newTweet.Text, time.Now(), newTweet.LikeCount, newTweet.Repost, newTweet.Public, newTweet.OnlyFollowers, newTweet.OnlyMutualFollowers, newTweet.OnlyMe).Scan(&newTweet.TweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
