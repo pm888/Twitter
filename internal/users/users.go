@@ -312,6 +312,45 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Println("Done")
 }
+func EditProfile(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("userID").(int)
+
+	var updatedProfile Users
+	err := json.NewDecoder(r.Body).Decode(&updatedProfile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	query := "UPDATE users_tweeter SET username = $1, nickname = $2, birthdate = $3, email = $4, password = $5 WHERE id = $6"
+	values := []interface{}{updatedProfile.Name, updatedProfile.Nickname, updatedProfile.BirthDate, updatedProfile.Email, updatedProfile.Password, userID}
+
+	if updatedProfile.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updatedProfile.Password), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		query += ", password = $5"
+		values = append(values, hashedPassword)
+	}
+
+	query += " WHERE id = $6"
+	values = append(values, userID)
+
+	_, err = pg.DB.Exec(query, values...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Profile updated successfully",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
 
 func GetFollowers(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
