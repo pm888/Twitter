@@ -16,6 +16,7 @@ func Server() {
 	r.HandleFunc("/login", Serviceuser.LoginUsers).Methods("POST")
 	r.HandleFunc("/logout", Serviceuser.LogoutUser)
 	r.HandleFunc("/resetpassword", Serviceuser.ResetPassword)
+	r.HandleFunc("/v1/tweets/{id}", Tweets.EditTweet).Methods(http.MethodPatch)
 	r.HandleFunc("/followuser", Serviceuser.FollowUser).Methods("POST")
 	r.HandleFunc("/unfollowuser", Serviceuser.UnfollowUser).Methods("POST")
 	r.HandleFunc("replacemyprofile", Serviceuser.EditMyProfile).Methods("POST")

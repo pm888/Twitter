@@ -74,6 +74,43 @@ func GetTweet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tweet)
 }
+func EditTweet(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("userID").(int)
+
+	var updatedTweet Serviceuser.Tweet
+	err := json.NewDecoder(r.Body).Decode(&updatedTweet)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	query := "SELECT user_id FROM tweets WHERE tweet_id = $1"
+	var tweetUserID int
+	err = pg.DB.QueryRow(query, updatedTweet.TweetID).Scan(&tweetUserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if userID != tweetUserID {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	query = "UPDATE tweets SET text = $1 WHERE tweet_id = $2"
+	_, err = pg.DB.Exec(query, updatedTweet.Text, updatedTweet.TweetID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Tweet updated successfully",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
 
 //func UpdateTweet(w http.ResponseWriter, r *http.Request) {
 //	tweetID := r.URL.Query().Get("tweet_id")
