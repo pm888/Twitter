@@ -35,5 +35,8 @@ func Server() {
 	//r.HandleFunc("/tweets_updatetweet", Tweets.UpdateTweet).Methods("POST")
 	//r.HandleFunc("/tweets_deletetweet", Tweets.DeleteTweet).Methods("POST")
 	http.Handle("/myaccount", Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.GetCurrentProfile)))
+	r.HandleFunc("/v1/users/password", func(w http.ResponseWriter, r *http.Request) {
+		Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.ResetPassword)).ServeHTTP(w, r)
+	}).Methods(http.MethodPatch)
 	http.ListenAndServe("localhost:8080", r)
 }
