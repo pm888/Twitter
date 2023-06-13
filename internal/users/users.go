@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -210,23 +211,6 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ResetPasswordPlusEmail(&userResPass)
-}
-
-func GetUserProfile(w http.ResponseWriter, r *http.Request) {
-	userID := GetCurrentUserID(w, r)
-
-	query := "SELECT id, name, email, nickname FROM users WHERE id = $1"
-	row := pg.DB.QueryRow(query, userID)
-
-	var userProfile Users
-	err := row.Scan(&userProfile.ID, &userProfile.Name, &userProfile.Email, &userProfile.Nickname)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(userProfile)
 }
 
 func GetCurrentUserID(w http.ResponseWriter, r *http.Request) int {
@@ -549,4 +533,35 @@ func GetCurrentProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+func GetUserProfile(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["id"]
+
+	query := "SELECT id, name, email, bio FROM users WHERE id = $1"
+	var user Users
+	err := pg.DB.QueryRow(query, userID).Scan(&user.ID, &user.Name, &user.Email, &user.Bio)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Birthday string `json:"birthday"`
+		NickName string `json:"nickName"`
+		Bio      string `json:"bio"`
+		Location string `json:"location"`
+	}{
+		Name:     user.Name,
+		Email:    user.Email,
+		Birthday: user.BirthDate,
+		NickName: user.Nickname,
+		Bio:      user.Bio,
+		Location: user.Location,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
