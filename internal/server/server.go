@@ -42,4 +42,5 @@ func Server() {
 	r.HandleFunc("/v1/tweets", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Tweets.EditTweet)).ServeHTTP(w, r)
 	}).Methods(http.MethodPatch)
+
 }

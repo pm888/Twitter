@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -168,65 +169,51 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func EditMyProfile(w http.ResponseWriter, r *http.Request) {
-	var newuser *ReplaceMyData
-
-	hashedNewPassword, err := bcrypt.GenerateFromPassword([]byte(newuser.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = pg.DB.Exec(`
-		UPDATE UserData SET 
-			Name = $1,
-			Email = $2,
-			Nickname = $3,
-			BirthDate = $4,
-			Bio = $5,
-			Password = $6,
-			Location = $7
-		WHERE id = $8`,
-		newuser.NewName,
-		newuser.NewEmail,
-		newuser.NewNickname,
-		newuser.NewBirthDate,
-		newuser.NewBio,
-		string(hashedNewPassword),
-		newuser.NewLocation,
-	)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("userID").(string)
+
 	var userResPass Users
 	err := json.NewDecoder(r.Body).Decode(&userResPass)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	ResetPasswordPlusEmail(&userResPass)
-}
-
-func GetUserProfile(w http.ResponseWriter, r *http.Request) {
-	userID := GetCurrentUserID(w, r)
-
-	query := "SELECT id, name, email, nickname FROM users WHERE id = $1"
-	row := pg.DB.QueryRow(query, userID)
-
-	var userProfile Users
-	err := row.Scan(&userProfile.ID, &userProfile.Name, &userProfile.Email, &userProfile.Nickname)
+	query := "SELECT name, email  FROM users_tweeter WHERE id = $1"
+	var user Users
+	err = pg.DB.QueryRow(query, userID).Scan(&user.Name, &user.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(userProfile)
+	userResPass.Email = user.Email
+	userResPass.Name = user.Name
+
+	ResetPasswordPlusEmail(&userResPass)
+}
+
+func ResetPasswordPlusEmail(user *Users) {
+
+	resetToken := services.GenerateResetToken()
+	user.ResetPasswordToken = resetToken
+	confirmURL := &url.URL{
+		Scheme: "http",
+		Host:   "test.com",
+		Path:   "/reset-password",
+		RawQuery: url.Values{
+			"token": {resetToken},
+		}.Encode(),
+	}
+	to := user.Email
+	subject := "Reset your password"
+	body := fmt.Sprintf("Dear %s,\n\nReset your password: click this link:\n%s", user.Name, confirmURL.String())
+
+	auth := smtp.PlainAuth("", "your-email", "password", "your-site")
+	err := smtp.SendMail("your-site:587", auth, "your-email", []string{to}, []byte(fmt.Sprintf("Subject: %s\n\n%s", subject, body)))
+	if err != nil {
+		return
+	}
+	return
 }
 
 func GetCurrentUserID(w http.ResponseWriter, r *http.Request) int {
@@ -513,29 +500,7 @@ func CheckEmail(newUser *Users) string {
 
 	return confirmToken
 }
-func ResetPasswordPlusEmail(user *Users) {
-	resetToken := services.GenerateResetToken()
-	user.ResetPasswordToken = resetToken
-	confirmURL := &url.URL{
-		Scheme: "http",
-		Host:   "test.com",
-		Path:   "/reset-password",
-		RawQuery: url.Values{
-			"token": {resetToken},
-		}.Encode(),
-	}
-	to := user.Email
-	subject := "Reset your password"
-	body := fmt.Sprintf("Reset your password: click this link:\n%s", confirmURL.String())
 
-	var auth = smtp.PlainAuth("", "your email", "password", "your site/token")
-	err := smtp.SendMail("your email:587", auth, "your site/token", []string{to}, []byte(fmt.Sprintf("Subject: %s\n\n%s", subject, body)))
-	if err != nil {
-		return
-	}
-	return
-
-}
 func GetCurrentProfile(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(int)
 
@@ -549,4 +514,35 @@ func GetCurrentProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+func GetUserProfile(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["id"]
+
+	query := "SELECT id, name, email, bio FROM users WHERE id = $1"
+	var user Users
+	err := pg.DB.QueryRow(query, userID).Scan(&user.ID, &user.Name, &user.Email, &user.Bio)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Birthday string `json:"birthday"`
+		NickName string `json:"nickName"`
+		Bio      string `json:"bio"`
+		Location string `json:"location"`
+	}{
+		Name:     user.Name,
+		Email:    user.Email,
+		Birthday: user.BirthDate,
+		NickName: user.Nickname,
+		Bio:      user.Bio,
+		Location: user.Location,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
