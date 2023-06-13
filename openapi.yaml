@@ -122,6 +122,70 @@ paths:
         '500':
           description: Internal Server Error
 
+  /v1/users/reset-password:
+    post:
+      tags:
+        - Users
+      summary: Reset User Password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+
+  /v1/users/follow:
+    post:
+      tags:
+        - Users
+      summary: Follow User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsersFollow'
+      responses:
+        '200':
+          description: User followed successfully
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+  /v1/users/unfollow:
+    post:
+      tags:
+        - Users
+      summary: Unfollow User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsersFollow'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+
   /v1/tweets:
     post:
       tags:
@@ -132,9 +196,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTweetRequest'
+              $ref: '#/components/schemas/Tweet'
       responses:
-        '200':
+        '201':
           description: Tweet created successfully
           content:
             application/json:
@@ -149,27 +213,25 @@ paths:
         '500':
           description: Internal Server Error
 
-    patch:
+  /v1/tweets/{id}:
+    get:
       tags:
         - Tweets
-      summary: Edit Tweet
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateTweetRequest'
+      summary: Get Tweet by ID
+      parameters:
+        - name: id
+          in: path
+          description: Tweet ID
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
-          description: Tweet updated successfully
+          description: Tweet details
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tweet'
-        '400':
-          description: Invalid request
-        '401':
-          description: Unauthorized
         '500':
           description: Internal Server Error
 
@@ -178,63 +240,30 @@ components:
     User:
       type: object
       properties:
-        id:
-          type: integer
-        name:
-          type: string
-        password:
-          type: string
         email:
           type: string
-        emailToken:
+          format: email
+        password:
           type: string
-        confirmEmailToken:
-          type: boolean
-        resetPasswordToken:
-          type: string
-        birthDate:
-          type: string
-        nickname:
-          type: string
-        bio:
-          type: string
-        location:
-          type: string
-        tweet:
-          type: object
-        following:
-          type: array
-          items:
-            type: integer
-        followers:
-          type: array
-          items:
-            type: integer
-
+          format: password
     UserLoginRequest:
       type: object
       properties:
         email:
           type: string
+          format: email
         password:
           type: string
-
     AuthSuccessResponse:
       type: object
       properties:
-        status:
+        accessToken:
           type: string
-        message:
-          type: string
-
     AuthErrorResponse:
       type: object
       properties:
-        status:
+        error:
           type: string
-        message:
-          type: string
-
     LogoutResponse:
       type: object
       properties:
@@ -242,71 +271,57 @@ components:
           type: string
         message:
           type: string
-
     UserProfile:
       type: object
       properties:
         id:
           type: integer
-        name:
-          type: string
         email:
           type: string
-        birthdate:
+        createdAt:
           type: string
-        bio:
+          format: date-time
+        updatedAt:
           type: string
-        location:
-          type: string
-        nickname:
-          type: string
-
+          format: date-time
     UpdateUserProfile:
       type: object
       properties:
-        name:
-          type: string
-        nickname:
-          type: string
-        birthdate:
-          type: string
         email:
           type: string
-        password:
-          type: string
-
-    CreateTweetRequest:
+          format: email
+    ResetPasswordRequest:
       type: object
       properties:
-        userID:
-          type: integer
-        author:
+        email:
           type: string
-        text:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-
-    UpdateTweetRequest:
+          format: email
+    ResetPasswordResponse:
       type: object
       properties:
-        tweetID:
-          type: integer
-        text:
+        status:
           type: string
-
+        message:
+          type: string
+    UsersFollow:
+      type: object
+      properties:
+        id2:
+          type: string
+    UsersunFollow:
+      type: object
+      properties:
+        id2:
+          type: string
     Tweet:
       type: object
       properties:
-        tweetID:
+        userId:
           type: integer
-        userID:
-          type: integer
-        author:
+        content:
           type: string
-        text:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
           type: string
-        createdAt:
-          type: string
-          format: date-time
