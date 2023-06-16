@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -216,38 +215,18 @@ func ResetPasswordPlusEmail(user *Users) {
 	return
 }
 
-func GetCurrentUserID(w http.ResponseWriter, r *http.Request) int {
-	var user Users
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return 0
-	}
-	return 1
-}
-
 func FollowUser(w http.ResponseWriter, r *http.Request) {
-	var usersFollow UsersFollow
-	err := json.NewDecoder(r.Body).Decode(&usersFollow)
+	userID := r.Context().Value("userID").(int)
+
+	var targetUserID Users
+	err := json.NewDecoder(r.Body).Decode(&targetUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	currentUserID, err := strconv.Atoi(usersFollow.ID1)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	targetUserID, err := strconv.Atoi(usersFollow.ID2)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	var count int
-	err = pg.DB.QueryRow("SELECT COUNT(*) FROM followers_subscriptions WHERE follower_id = $1 AND subscription_id = $2", currentUserID, targetUserID).Scan(&count)
+	err = pg.DB.QueryRow("SELECT COUNT(*) FROM followers_subscriptions WHERE follower_id = $1 AND subscription_id = $2", userID, targetUserID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -258,37 +237,26 @@ func FollowUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = pg.DB.Exec("INSERT INTO followers_subscriptions (follower_id, subscription_id) VALUES ($1, $2)", currentUserID, targetUserID)
+	_, err = pg.DB.Exec("INSERT INTO followers_subscriptions (follower_id, subscription_id) VALUES ($1, $2)", userID, targetUserID.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Println("Done")
 }
 
 func UnfollowUser(w http.ResponseWriter, r *http.Request) {
-	var usersFollow UsersFollow
-	err := json.NewDecoder(r.Body).Decode(&usersFollow)
+	userID := r.Context().Value("userID").(int)
+
+	var targetUserID Users
+	err := json.NewDecoder(r.Body).Decode(&targetUserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	currentUserID, err := strconv.Atoi(usersFollow.ID1)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	targetUserID, err := strconv.Atoi(usersFollow.ID2)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = pg.DB.Exec("DELETE FROM followers_subscriptions WHERE follower_id = $1 AND subscription_id = $2", currentUserID, targetUserID)
+	_, err = pg.DB.Exec("DELETE FROM followers_subscriptions WHERE follower_id = $1 AND subscription_id = $2", userID, targetUserID.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -297,6 +265,7 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Println("Done")
 }
+
 func EditProfile(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value("userID").(int)
 
