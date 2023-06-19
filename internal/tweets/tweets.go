@@ -7,6 +7,7 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"time"
@@ -164,16 +165,27 @@ func EditTweet(w http.ResponseWriter, r *http.Request) {
 //}
 
 func LikeTweet(w http.ResponseWriter, r *http.Request) {
-	var like Serviceuser.Tweeter_like
-	err := json.NewDecoder(r.Body).Decode(&like)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	idTweet := mux.Vars(r)["id_tweet"]
+	userID, ok := r.Context().Value("userID").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	query := "SELECT COUNT(*) FROM tweets WHERE user_id = $1 AND tweet_id = $2"
+	var exists bool
+	err := pg.DB.QueryRow("SELECT EXISTS (SELECT 1 FROM tweets WHERE tweet_id = $1)", idTweet).Scan(&exists)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Tweet not found", http.StatusNotFound)
+		return
+	}
+
+	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = pg.DB.QueryRow(query, like.Autor, like.Id_post).Scan(&count)
+	err = pg.DB.QueryRow(query, userID, idTweet).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -183,8 +195,8 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query = "INSERT INTO tweets (autor, id_post, whose_like) VALUES ($1, $2, $3)"
-	_, err = pg.DB.Exec(query, like.Autor, like.Id_post, like.Whose_like)
+	query = "INSERT INTO likes (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
+	_, err = pg.DB.Exec(query, idTweet, userID, time.Now())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -194,28 +206,25 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
-	tweetID := r.FormValue("tweet_id")
-	if tweetID == "" {
-		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
-		return
-	}
+	vars := mux.Vars(r)
+	idTweet := vars["id_tweet"]
 
-	userID, err := services.GetCurrentUserID(r)
+	userID := r.Context().Value("user_id").(int)
 
 	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if count == 0 {
-		http.Error(w, "Tweet not liked", http.StatusBadRequest)
+		http.Error(w, "Tweet is not liked", http.StatusBadRequest)
 		return
 	}
 
 	query = "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	_, err = pg.DB.Exec(query, userID, tweetID)
+	_, err = pg.DB.Exec(query, userID, idTweet)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -223,6 +232,7 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
 func Retweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.FormValue("tweet_id")
 	if tweetID == "" {

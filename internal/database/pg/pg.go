@@ -10,6 +10,7 @@ const (
 	postgresPassword = "postgrespw"
 	postgresDBip     = "localhost"
 	postgresDBName   = "tweeter"
+	portPG           = "55000"
 )
 
 var DB *sql.DB
@@ -19,7 +20,7 @@ type ServicePostgresql struct {
 }
 
 func ConnectPostgresql() error {
-	connStr := fmt.Sprintf("postgresql://%s:%s@%s:55003/%s?sslmode=disable", postgresUsername, postgresPassword, postgresDBip, postgresDBName)
+	connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", postgresUsername, postgresPassword, postgresDBip, portPG, postgresDBName)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
