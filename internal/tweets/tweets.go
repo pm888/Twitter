@@ -7,6 +7,7 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"time"
@@ -190,21 +191,20 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
-	tweetID := r.FormValue("tweet_id")
-	if tweetID == "" {
-		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
+	idTweet := mux.Vars(r)["id_tweet"]
+	userID, ok := r.Context().Value("userID").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID, err := services.GetCurrentUserID(r)
-
 	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -215,14 +215,13 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query = "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	_, err = pg.DB.Exec(query, userID, tweetID)
+	_, err = pg.DB.Exec(query, userID, idTweet)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
+
 func Retweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.FormValue("tweet_id")
 	if tweetID == "" {
