@@ -173,24 +173,14 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var exists bool
-	err := pg.DB.QueryRow("SELECT EXISTS (SELECT 1 FROM tweets WHERE tweet_id = $1)", idTweet).Scan(&exists)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if !exists {
-		http.Error(w, "Tweet not found", http.StatusNotFound)
-		return
-	}
 
-	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	var count int
-	err = pg.DB.QueryRow(query, userID, idTweet).Scan(&count)
+	query := "SELECT EXISTS (SELECT 1 FROM likes WHERE user_id = $1 AND tweet_id = $2)"
+	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&exists)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if count > 0 {
+	if exists {
 		http.Error(w, "Tweet already liked", http.StatusBadRequest)
 		return
 	}
