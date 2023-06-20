@@ -7,6 +7,7 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"time"
@@ -224,16 +225,26 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 func Retweet(w http.ResponseWriter, r *http.Request) {
-	tweetID := r.FormValue("tweet_id")
-	if tweetID == "" {
-		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
+	tweetID := mux.Vars(r)["id_tweet"]
+	userID, ok := r.Context().Value("userID").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID, err := services.GetCurrentUserID(r)
-
-	query := "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
+	query := "SELECT COUNT(*) FROM tweets WHERE tweet_id = $1"
 	var count int
+	err := pg.DB.QueryRow(query, tweetID).Scan(&count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if count == 0 {
+		http.Error(w, "Tweet not found", http.StatusNotFound)
+		return
+	}
+
+	query = "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
 	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -244,8 +255,28 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query = "INSERT INTO retweets (user_id, tweet_id, created_at) VALUES ($1, $2, $3)"
-	_, err = pg.DB.Exec(query, userID, tweetID, time.Now())
+	query = "SELECT text FROM tweets WHERE tweet_id = $1"
+	var tweetText string
+	err = pg.DB.QueryRow(query, tweetID).Scan(&tweetText)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	query = "INSERT INTO retweets (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
+	_, err = pg.DB.Exec(query, tweetID, userID, time.Now())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	public := true
+	onlyFollowers := false
+	onlyMutualFollowers := false
+	onlyMe := false
+
+	query = "INSERT INTO tweets (user_id, text, created_at, public, only_followers, only_mutual_followers, only_me) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+	_, err = pg.DB.Exec(query, userID, fmt.Sprintf("Retweeted tweet: %s", tweetText), time.Now(), public, onlyFollowers, onlyMutualFollowers, onlyMe)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -253,6 +284,7 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
 func GetPopularTweets(w http.ResponseWriter, r *http.Request) {
 	query := "SELECT id, user_id, content FROM tweets ORDER BY likes DESC LIMIT 10"
 
