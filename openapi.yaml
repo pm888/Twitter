@@ -241,7 +241,7 @@ paths:
       summary: Retweet a tweet
       parameters:
         - in: path
-          name: tweet_id
+          name: id_tweet
           required: true
           schema:
             type: string

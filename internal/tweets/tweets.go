@@ -232,34 +232,32 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := "SELECT COUNT(*) FROM tweets WHERE tweet_id = $1"
-	var count int
-	err := pg.DB.QueryRow(query, tweetID).Scan(&count)
+	query := `
+	SELECT EXISTS (
+		SELECT 1
+		FROM retweets
+		WHERE tweet_id = $1 AND user_id = $2
+		LIMIT 1
+	), t.text
+	FROM tweets t
+	WHERE t.tweet_id = $1
+	LIMIT 1
+`
+	var exists bool
+	var tweetText string
+	err := pg.DB.QueryRow(query, tweetID, userID).Scan(&exists, &tweetText)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if count == 0 {
-		http.Error(w, "Tweet not found", http.StatusNotFound)
 		return
 	}
 
-	query = "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
-	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if count > 0 {
+	if exists {
 		http.Error(w, "Tweet already retweeted", http.StatusBadRequest)
 		return
 	}
 
-	query = "SELECT text FROM tweets WHERE tweet_id = $1"
-	var tweetText string
-	err = pg.DB.QueryRow(query, tweetID).Scan(&tweetText)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if tweetText == "" {
+		http.Error(w, "Tweet not found", http.StatusNotFound)
 		return
 	}
 
@@ -275,8 +273,8 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	onlyMutualFollowers := false
 	onlyMe := false
 
-	query = "INSERT INTO tweets (user_id, text, created_at, public, only_followers, only_mutual_followers, only_me) VALUES ($1, $2, $3, $4, $5, $6, $7)"
-	_, err = pg.DB.Exec(query, userID, fmt.Sprintf("Retweeted tweet: %s", tweetText), time.Now(), public, onlyFollowers, onlyMutualFollowers, onlyMe)
+	query = "INSERT INTO tweets (user_id, text, created_at, public, only_followers, only_mutual_followers, only_me, retweet) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+	_, err = pg.DB.Exec(query, userID, fmt.Sprintf(tweetText), time.Now(), public, onlyFollowers, onlyMutualFollowers, onlyMe, tweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
