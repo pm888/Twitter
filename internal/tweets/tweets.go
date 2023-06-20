@@ -5,6 +5,7 @@ import (
 	_ "Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
 	Serviceuser "Twitter_like_application/internal/users"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -202,24 +203,18 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := "SELECT COUNT(*) FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	var count int
-	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&count)
+	query := "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2 RETURNING true"
+	var exists bool
+	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&exists)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if count == 0 {
-		http.Error(w, "Tweet not liked", http.StatusBadRequest)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Tweet not liked", http.StatusBadRequest)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
-	query = "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2"
-	_, err = pg.DB.Exec(query, userID, idTweet)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }
 
 func Retweet(w http.ResponseWriter, r *http.Request) {
