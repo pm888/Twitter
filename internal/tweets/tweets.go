@@ -7,6 +7,7 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"time"
@@ -112,57 +113,6 @@ func EditTweet(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-//func UpdateTweet(w http.ResponseWriter, r *http.Request) {
-//	tweetID := r.URL.Query().Get("tweet_id")
-//	newContent := r.FormValue("text")
-//	intId, err := services.ConvertStringToNumber(tweetID)
-//	if tweetID == "" {
-//		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
-//		return
-//	}
-//	if newContent == "" {
-//		http.Error(w, "Missing new tweet content", http.StatusBadRequest)
-//		return
-//	}
-//	query := "UPDATE tweets SET content = $1 WHERE id = $2"
-//	result, err := pg.DB.Exec(query, newContent, tweetID)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//	rowsAffected, _ := result.RowsAffected()
-//	if rowsAffected == 0 {
-//		http.Error(w, "Tweet not found", http.StatusNotFound)
-//		return
-//	}
-//
-//	var updatedTweet = Serviceuser.Tweet{TweetID: intId, Text: newContent}
-//	w.Header().Set("Content-Type", "application/json")
-//	json.NewEncoder(w).Encode(updatedTweet)
-//}
-//func DeleteTweet(w http.ResponseWriter, r *http.Request) {
-//	tweetID := r.URL.Query().Get("tweet_id")
-//	if tweetID == "" {
-//		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
-//		return
-//	}
-//
-//	query := "DELETE FROM tweets WHERE id = $1"
-//	result, err := pg.DB.Exec(query, tweetID)
-//	if err != nil {
-//		http.Error(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//
-//	rowsAffected, _ := result.RowsAffected()
-//	if rowsAffected == 0 {
-//		http.Error(w, "Tweet not found", http.StatusNotFound)
-//		return
-//	}
-//
-//	w.WriteHeader(http.StatusOK)
-//}
-
 func LikeTweet(w http.ResponseWriter, r *http.Request) {
 	var like Serviceuser.Tweeter_like
 	err := json.NewDecoder(r.Body).Decode(&like)
@@ -253,6 +203,52 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+func DeleteTweet(w http.ResponseWriter, r *http.Request) {
+	tweetID := mux.Vars(r)["id_tweet"]
+	userID, ok := r.Context().Value("userID").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	tx, err := pg.DB.Begin()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	query := "SELECT user_id FROM tweets WHERE tweet_id = $1"
+	var tweetUserID int
+	err = tx.QueryRow(query, tweetID).Scan(&tweetUserID)
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if tweetUserID != userID {
+		tx.Rollback()
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	query = "DELETE FROM tweets WHERE tweet_id = $1"
+	_, err = tx.Exec(query, tweetID)
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func GetPopularTweets(w http.ResponseWriter, r *http.Request) {
 	query := "SELECT id, user_id, content FROM tweets ORDER BY likes DESC LIMIT 10"
 
