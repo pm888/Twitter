@@ -22,9 +22,9 @@ import (
 
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	cookie, err := r.Cookie("session")
-	if err != nil {
+	if err != nil || cookie == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-
+		return
 	}
 
 	sessionID := cookie.Value
@@ -34,7 +34,7 @@ func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next htt
 	err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-
+		return
 	}
 
 	ctx := context.WithValue(r.Context(), "userID", userID)

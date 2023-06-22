@@ -234,6 +234,25 @@ paths:
                 $ref: '#/components/schemas/Tweet'
         '500':
           description: Internal Server Error
+  /tweets/{id_tweet}/unlike:
+    delete:
+      tags:
+        - Tweets
+      summary: Unlike a tweet
+      parameters:
+        - name: id_tweet
+          in: path
+          description: ID of the tweet to unlike
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tweet unliked successfully
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
 
 components:
   schemas:
