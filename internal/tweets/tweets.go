@@ -251,11 +251,6 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if exists {
-		http.Error(w, "Tweet already retweeted", http.StatusBadRequest)
-		return
-	}
-
 	if tweetText == "" {
 		http.Error(w, "Tweet not found", http.StatusNotFound)
 		return
