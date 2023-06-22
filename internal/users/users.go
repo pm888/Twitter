@@ -35,7 +35,6 @@ func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next htt
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-
 	}
 
 	ctx := context.WithValue(r.Context(), "userID", userID)
