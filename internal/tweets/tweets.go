@@ -196,7 +196,9 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
-func DeleteTweet(w http.ResponseWriter, r *http.Request) {
+
+func Retweet(w http.ResponseWriter, r *http.Request) {
+
 	tweetID := mux.Vars(r)["id_tweet"]
 	userID, ok := r.Context().Value("userID").(int)
 	if !ok {
@@ -204,36 +206,47 @@ func DeleteTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := pg.DB.Begin()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	query := `
+	SELECT EXISTS (
+		SELECT 1
+		FROM retweets
+		WHERE tweet_id = $1 AND user_id = $2
+		LIMIT 1
+	), t.text
+	FROM tweets t
+	WHERE t.tweet_id = $1
+	LIMIT 1
+`
+	var exists bool
+	var tweetText string
+	err := pg.DB.QueryRow(query, tweetID, userID).Scan(&exists, &tweetText)
 
-	query := "SELECT user_id FROM tweets WHERE tweet_id = $1"
-	var tweetUserID int
-	err = tx.QueryRow(query, tweetID).Scan(&tweetUserID)
-	if err != nil {
-		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if tweetUserID != userID {
-		tx.Rollback()
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	query = "DELETE FROM tweets WHERE tweet_id = $1"
-	_, err = tx.Exec(query, tweetID)
 	if err != nil {
 		tx.Rollback()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err = tx.Commit()
+	if tweetText == "" {
+		http.Error(w, "Tweet not found", http.StatusNotFound)
+		return
+	}
+
+	query = "INSERT INTO retweets (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
+	_, err = pg.DB.Exec(query, tweetID, userID, time.Now())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	public := true
+	onlyFollowers := false
+	onlyMutualFollowers := false
+	onlyMe := false
+
+	query = "INSERT INTO tweets (user_id, text, created_at, public, only_followers, only_mutual_followers, only_me, retweet) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+	_, err = pg.DB.Exec(query, userID, fmt.Sprintf(tweetText), time.Now(), public, onlyFollowers, onlyMutualFollowers, onlyMe, tweetID)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
