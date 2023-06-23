@@ -3,13 +3,12 @@ package tweets
 import (
 	"Twitter_like_application/internal/database/pg"
 	_ "Twitter_like_application/internal/database/pg"
-	"Twitter_like_application/internal/services"
 	Serviceuser "Twitter_like_application/internal/users"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -132,7 +131,6 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
-
 	idTweet := mux.Vars(r)["id_tweet"]
 	userID, ok := r.Context().Value("userID").(int)
 	if !ok {
