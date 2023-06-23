@@ -141,7 +141,7 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +155,29 @@ func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
 	query := "DELETE FROM likes WHERE user_id = $1 AND tweet_id = $2 RETURNING true"
 	var exists bool
 	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Tweet not liked", http.StatusBadRequest)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+}
+
+func Retweet(w http.ResponseWriter, r *http.Request) {
+	tweetID := r.FormValue("tweet_id")
+	if tweetID == "" {
+		http.Error(w, "Missing tweet ID", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := services.GetCurrentUserID(r)
+
+	query := "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
+	var count int
+	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Tweet not liked", http.StatusBadRequest)
@@ -201,6 +224,7 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	query = "INSERT INTO retweets (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
 	_, err = pg.DB.Exec(query, tweetID, userID, time.Now())
 	if err != nil {
+		tx.Rollback()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -213,6 +237,27 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 		LIMIT 1
 	`
 	_, err = pg.DB.Exec(query, userID, tweetText, time.Now(), tweetID)
+
+	if tweetText == "" {
+		http.Error(w, "Tweet not found", http.StatusNotFound)
+		return
+	}
+
+	query = "INSERT INTO retweets (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
+	_, err = pg.DB.Exec(query, tweetID, userID, time.Now())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	public := true
+	onlyFollowers := false
+	onlyMutualFollowers := false
+	onlyMe := false
+
+	query = "INSERT INTO tweets (user_id, text, created_at, public, only_followers, only_mutual_followers, only_me, retweet) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+	_, err = pg.DB.Exec(query, userID, fmt.Sprintf(tweetText), time.Now(), public, onlyFollowers, onlyMutualFollowers, onlyMe, tweetID)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

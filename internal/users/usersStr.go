@@ -69,11 +69,6 @@ type UsersLogin struct {
 	Password string `json:"password_logIN"`
 }
 
-type UsersFollow struct {
-	ID1 string `json:"id1"`
-	ID2 string `json:"id2"`
-}
-
 type Tweeter_like struct {
 	Autor      int `json:"autor"`
 	Id_post    int `json:"id_post"`
