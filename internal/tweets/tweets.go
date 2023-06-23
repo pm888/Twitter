@@ -179,26 +179,17 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	var count int
 	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if count > 0 {
-		http.Error(w, "Tweet already retweeted", http.StatusBadRequest)
-		return
-	}
-
-	query = "INSERT INTO retweets (user_id, tweet_id, created_at) VALUES ($1, $2, $3)"
-	_, err = pg.DB.Exec(query, userID, tweetID, time.Now())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Tweet not liked", http.StatusBadRequest)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 }
 
 func Retweet(w http.ResponseWriter, r *http.Request) {
-
 	tweetID := mux.Vars(r)["id_tweet"]
 	userID, ok := r.Context().Value("userID").(int)
 	if !ok {
@@ -207,25 +198,45 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-	SELECT EXISTS (
-		SELECT 1
-		FROM retweets
-		WHERE tweet_id = $1 AND user_id = $2
+		SELECT EXISTS (
+			SELECT 1
+			FROM retweets
+			WHERE tweet_id = $1 AND user_id = $2
+			LIMIT 1
+		), t.text
+		FROM tweets t
+		WHERE t.tweet_id = $1
 		LIMIT 1
-	), t.text
-	FROM tweets t
-	WHERE t.tweet_id = $1
-	LIMIT 1
-`
+	`
 	var exists bool
 	var tweetText string
 	err := pg.DB.QueryRow(query, tweetID, userID).Scan(&exists, &tweetText)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	if tweetText == "" {
+		http.Error(w, "Tweet not found", http.StatusNotFound)
+		return
+	}
+
+	query = "INSERT INTO retweets (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
+	_, err = pg.DB.Exec(query, tweetID, userID, time.Now())
 	if err != nil {
 		tx.Rollback()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	query = `
+		INSERT INTO tweets (user_id, text, created_at, visibility, retweet)
+		SELECT $1, $2, $3, visibility, $4
+		FROM tweets
+		WHERE tweet_id = $4
+		LIMIT 1
+	`
+	_, err = pg.DB.Exec(query, userID, tweetText, time.Now(), tweetID)
 
 	if tweetText == "" {
 		http.Error(w, "Tweet not found", http.StatusNotFound)
