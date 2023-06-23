@@ -11,7 +11,6 @@ import (
 func Server() {
 	r := mux.NewRouter()
 	fmt.Println("Server was run", "localhost:8080")
-	http.ListenAndServe("localhost:8080", r)
 	r.HandleFunc("/v1/users", Serviceuser.CreateUser).Methods(http.MethodPost)
 	r.HandleFunc("/v1/users/login", Serviceuser.LoginUsers).Methods(http.MethodPost)
 	http.Handle("/v1/users/logout", Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.LogoutUser)))
@@ -34,5 +33,8 @@ func Server() {
 	r.HandleFunc("/v1/tweets", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Tweets.EditTweet)).ServeHTTP(w, r)
 	}).Methods(http.MethodPatch)
-
+	r.HandleFunc("/v1/tweets/{id_tweet}/retweet", func(w http.ResponseWriter, r *http.Request) {
+		Serviceuser.AuthHandler(http.HandlerFunc(Tweets.Retweet)).ServeHTTP(w, r)
+	}).Methods(http.MethodPost)
+	http.ListenAndServe("localhost:8080", r)
 }
