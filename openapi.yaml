@@ -235,7 +235,7 @@ paths:
         '500':
           description: Internal Server Error
 
-  /tweets/{id_tweet}/like:
+  v1/tweets/{id_tweet}/like:
       post:
         tags:
           - Tweets
@@ -260,6 +260,31 @@ paths:
             description: Bad request
           '500':
             description: Internal server error
+  v1/tweets/{id_tweet}/unlike:
+    delete:
+      tags:
+        - Tweets
+      summary: Unlike a tweet
+      parameters:
+        - name: id_tweet
+          in: path
+          description: ID of the tweet to like
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tweeter_like'
+      responses:
+        '200':
+          description: Tweet unliked successfully
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
 
   /v1/tweets/{id_tweet}/retweet:
     post:
