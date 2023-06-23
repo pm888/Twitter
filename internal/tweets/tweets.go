@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -384,6 +385,81 @@ func GetFollowingTweets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tweets)
+}
+func Explore(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("userID").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	query := `
+		SELECT subscription_id
+		FROM followers_subscriptions
+		WHERE follower_id = $1
+	`
+	rows, err := pg.DB.Query(query, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var followedUserIDs []int
+	for rows.Next() {
+		var followedUserID int
+		err := rows.Scan(&followedUserID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		followedUserIDs = append(followedUserIDs, followedUserID)
+	}
+	if err = rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	conditions := make([]string, 0)
+	conditions = append(conditions, "user_id = $1")
+
+	for _, followedUserID := range followedUserIDs {
+		conditions = append(conditions, fmt.Sprintf("(user_id = %d AND (public = 'true' OR only_followers = 'true'))", followedUserID))
+	}
+
+	query = fmt.Sprintf(`
+		SELECT tweet_id, user_id, text
+		FROM tweets
+		WHERE (%s) AND created_at >= NOW() - INTERVAL '1 month'
+		ORDER BY created_at DESC
+	`, strings.Join(conditions, " OR "))
+
+	rows, err = pg.DB.Query(query, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tweets []Serviceuser.Tweet
+	for rows.Next() {
+		var tweet Serviceuser.Tweet
+		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tweets = append(tweets, tweet)
+	}
+	if err = rows.Err(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	for i := range tweets {
+		fmt.Println(tweets[i])
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tweets)
 }
