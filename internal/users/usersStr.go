@@ -38,12 +38,13 @@ type Tweet struct {
 	Text                string    `json:"text"`
 	CreatedAt           time.Time `json:"created_at"`
 	LikeCount           int       `json:"like_count"`
-	Repost              int       `json:"repost"`
+	Retweet             int       `json:"repost"`
 	Public              bool      `json:"public"`
 	OnlyFollowers       bool      `json:"only_followers"`
 	OnlyMutualFollowers bool      `json:"only_mutual_followers"`
 	OnlyMe              bool      `json:"only_me"`
 	LoginToken          string
+	ParentTweetId       int `json:"parent_tweet_id"`
 }
 
 type ReplayTweet struct {

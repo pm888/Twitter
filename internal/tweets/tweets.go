@@ -7,7 +7,6 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -49,9 +48,9 @@ func CreateTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query = `INSERT INTO tweets (user_id, author, text, created_at, like_count, repost, public, only_followers, only_mutual_followers, only_me)
+	query = `INSERT INTO tweets (tweet_id, user_id, text, created_at, parent_tweet_id, public, only_followers, only_mutual_followers, only_me,retweet)
 	 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING tweet_id`
-	err = pg.DB.QueryRowContext(r.Context(), query, newTweet.UserID, newTweet.Author, newTweet.Text, time.Now(), newTweet.LikeCount, newTweet.Repost, newTweet.Public, newTweet.OnlyFollowers, newTweet.OnlyMutualFollowers, newTweet.OnlyMe).Scan(&newTweet.TweetID)
+	err = pg.DB.QueryRowContext(r.Context(), query, newTweet.TweetID, newTweet.UserID, newTweet.Text, time.Now(), newTweet.ParentTweetId, newTweet.Public, newTweet.OnlyFollowers, newTweet.OnlyMutualFollowers, newTweet.OnlyMe, newTweet.Retweet).Scan(&newTweet.TweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -266,124 +265,4 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-}
-
-func GetPopularTweets(w http.ResponseWriter, r *http.Request) {
-	query := "SELECT id, user_id, content FROM tweets ORDER BY likes DESC LIMIT 10"
-
-	rows, err := pg.DB.Query(query)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var tweets []Serviceuser.Tweet
-
-	for rows.Next() {
-		var tweet Serviceuser.Tweet
-		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tweets = append(tweets, tweet)
-	}
-
-	if err := rows.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tweets)
-}
-func SearchTweets(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("query")
-	if query == "" {
-		http.Error(w, "Missing search query", http.StatusBadRequest)
-		return
-	}
-
-	searchQuery := "%" + query + "%"
-	query = "SELECT id, user_id, content FROM tweets WHERE content ILIKE $1"
-
-	rows, err := pg.DB.Query(query, searchQuery)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var tweets []Serviceuser.Tweet
-
-	for rows.Next() {
-		var tweet Serviceuser.Tweet
-		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tweets = append(tweets, tweet)
-	}
-
-	if err := rows.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tweets)
-}
-func GetFollowingTweets(w http.ResponseWriter, r *http.Request) {
-	currentUserID, err := services.GetCurrentUserID(r)
-
-	subscribedUserIDs, err := services.GetSubscribedUserIDs(currentUserID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if len(subscribedUserIDs) == 0 {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]Serviceuser.Tweet{})
-		return
-	}
-
-	userIDStr := ""
-	for i, userID := range subscribedUserIDs {
-		if i > 0 {
-			userIDStr += ","
-		}
-		userIDStr += strconv.Itoa(userID)
-	}
-
-	query := fmt.Sprintf("SELECT id, user_id, content FROM tweets WHERE user_id IN (%s)", userIDStr)
-
-	rows, err := pg.DB.Query(query)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var tweets []Serviceuser.Tweet
-
-	for rows.Next() {
-		var tweet Serviceuser.Tweet
-		err := rows.Scan(&tweet.TweetID, &tweet.UserID, &tweet.Text)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tweets = append(tweets, tweet)
-	}
-
-	if err := rows.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tweets)
 }
