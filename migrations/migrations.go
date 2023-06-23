@@ -33,6 +33,7 @@ var items = []darwin.Migration{
 			user_id INTEGER NOT NULL,
 			text TEXT NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+			parent_tweet_id INTEGER,
 			public BOOLEAN NOT NULL,
 			only_followers BOOLEAN NOT NULL,
 			only_mutual_followers BOOLEAN NOT NULL,
