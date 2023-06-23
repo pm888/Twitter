@@ -115,27 +115,28 @@ func EditTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func LikeTweet(w http.ResponseWriter, r *http.Request) {
-	var like Serviceuser.Tweeter_like
-	err := json.NewDecoder(r.Body).Decode(&like)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	idTweet := mux.Vars(r)["id_tweet"]
+	userID, ok := r.Context().Value("userID").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	query := "SELECT COUNT(*) FROM tweets WHERE user_id = $1 AND tweet_id = $2"
-	var count int
-	err = pg.DB.QueryRow(query, like.Autor, like.Id_post).Scan(&count)
+	var exists bool
+
+	query := "SELECT EXISTS (SELECT 1 FROM likes WHERE user_id = $1 AND tweet_id = $2)"
+	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&exists)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if count > 0 {
+	if exists {
 		http.Error(w, "Tweet already liked", http.StatusBadRequest)
 		return
 	}
 
-	query = "INSERT INTO tweets (autor, id_post, whose_like) VALUES ($1, $2, $3)"
-	_, err = pg.DB.Exec(query, like.Autor, like.Id_post, like.Whose_like)
+	query = "INSERT INTO likes (tweet_id, user_id, timestamp) VALUES ($1, $2, $3)"
+	_, err = pg.DB.Exec(query, idTweet, userID, time.Now())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -145,6 +146,7 @@ func LikeTweet(w http.ResponseWriter, r *http.Request) {
 }
 
 func UnlikeTweet(w http.ResponseWriter, r *http.Request) {
+
 	idTweet := mux.Vars(r)["id_tweet"]
 	userID, ok := r.Context().Value("userID").(int)
 	if !ok {
@@ -173,11 +175,11 @@ func Retweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := services.GetCurrentUserID(r)
+	userID := r.Context().Value("user_id").(int)
 
 	query := "SELECT COUNT(*) FROM retweets WHERE user_id = $1 AND tweet_id = $2"
 	var count int
-	err = pg.DB.QueryRow(query, userID, tweetID).Scan(&count)
+	err := pg.DB.QueryRow(query, userID, idTweet).Scan(&count)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Tweet not liked", http.StatusBadRequest)

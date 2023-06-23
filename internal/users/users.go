@@ -41,7 +41,6 @@ func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next htt
 	r = r.WithContext(ctx)
 
 	next.ServeHTTP(w, r)
-	return
 }
 
 func AuthHandler(next http.Handler) http.Handler {

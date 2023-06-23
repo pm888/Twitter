@@ -10,6 +10,7 @@ const (
 	postgresPassword = "postgrespw"
 	postgresDBip     = "localhost"
 	postgresDBName   = "tweeter"
+	portPG           = "55000"
 )
 
 var DB *sql.DB

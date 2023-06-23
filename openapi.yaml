@@ -234,6 +234,33 @@ paths:
                 $ref: '#/components/schemas/Tweet'
         '500':
           description: Internal Server Error
+
+  /tweets/{id_tweet}/like:
+      post:
+        tags:
+          - Tweets
+        summary: Like a tweet
+        parameters:
+          - name: id_tweet
+            in: path
+            description: ID of the tweet to like
+            required: true
+            schema:
+              type: integer
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tweeter_like'
+        responses:
+          '200':
+            description: Tweet liked successfully
+          '400':
+            description: Bad request
+          '500':
+            description: Internal server error
+
   /v1/tweets/{id_tweet}/retweet:
     post:
       tags:
@@ -256,6 +283,7 @@ paths:
           description: Tweet not found
         '500':
           description: Internal server error
+
 
 components:
   schemas:
@@ -347,3 +375,17 @@ components:
       properties:
         error:
           type: string
+
+    Tweeter_like:
+          type: object
+          properties:
+            Autor:
+              type: integer
+            Id_post:
+              type: integer
+            Whose_like:
+              type: integer
+          required:
+            - Autor
+            - Id_post
+            - Whose_like
