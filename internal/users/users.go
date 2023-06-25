@@ -101,9 +101,10 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	query := "SELECT password FROM users_tweeter WHERE email = $1"
+	query := "SELECT id, password FROM users_tweeter WHERE email = $1"
+	var userID int
 	var savedPassword string
-	err = pg.DB.QueryRow(query, user.Email).Scan(&savedPassword)
+	err = pg.DB.QueryRow(query, user.Email).Scan(&userID, &savedPassword)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -122,8 +123,8 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, cookie)
 
-		updateQuery := "UPDATE users_tweeter SET logintoken = $1 WHERE email = $2"
-		_, err = pg.DB.Exec(updateQuery, sessionID, user.Email)
+		insertQuery := "INSERT INTO user_session (user_id, login_token, timestamp) VALUES ($1, $2, $3)"
+		_, err = pg.DB.Exec(insertQuery, userID, cookie.Value, time.Now())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

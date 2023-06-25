@@ -11,19 +11,18 @@ var items = []darwin.Migration{
 		Version:     1,
 		Description: `users_tweeter table`,
 		Script: `CREATE TABLE users_tweeter (
-			id SERIAL PRIMARY KEY,
-			name TEXT NOT NULL,
-			password TEXT NOT NULL,
-			email TEXT NOT NULL,
-			emailtoken TEXT DEFAULT NULL,
-			confirmemailtoken BOOLEAN DEFAULT NULL,
-			resetpasswordtoken TEXT DEFAULT NULL,
-			birthdate DATE NOT NULL,
-			nickname TEXT NOT NULL,
-			bio TEXT DEFAULT NULL,
-			location TEXT DEFAULT NULL,
-			logintoken TEXT DEFAULT NULL
-		)`,
+		id SERIAL PRIMARY KEY,
+		name TEXT NOT NULL,
+		password TEXT NOT NULL,
+		email TEXT NOT NULL,
+		emailtoken TEXT DEFAULT NULL,
+		confirmemailtoken BOOLEAN DEFAULT NULL,
+		resetpasswordtoken TEXT DEFAULT NULL,
+		birthdate DATE NOT NULL,
+		nickname TEXT NOT NULL,
+		bio TEXT DEFAULT NULL,
+		location TEXT DEFAULT NULL
+	)`,
 	},
 	{
 		Version:     2,
@@ -67,6 +66,16 @@ var items = []darwin.Migration{
 			id SERIAL PRIMARY KEY,
 			tweet_id INTEGER NOT NULL,
 			user_id INTEGER NOT NULL,
+			timestamp TIMESTAMP WITH TIME ZONE NOT NULL
+		)`,
+	},
+	{
+		Version:     6,
+		Description: `users_session table`,
+		Script: `CREATE TABLE user_session (
+			id SERIAL PRIMARY KEY,
+			user_id INTEGER NOT NULL,
+			login_token TEXT DEFAULT NULL,
 			timestamp TIMESTAMP WITH TIME ZONE NOT NULL
 		)`,
 	},
