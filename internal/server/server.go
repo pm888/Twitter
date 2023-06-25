@@ -5,13 +5,17 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"fmt"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
+	"net/http/httptest"
 )
 
 func Server() {
 	r := mux.NewRouter()
 	fmt.Println("Server was run", "localhost:8080")
-	r.HandleFunc("/v1/users", Serviceuser.CreateUser).Methods(http.MethodPost)
+	r.Use(LoggingMiddleware)
+	r.Use(CorsMiddleware)
+	r.HandleFunc("/v1/users/create", Serviceuser.CreateUser).Methods(http.MethodPost)
 	r.HandleFunc("/v1/users/login", Serviceuser.LoginUsers).Methods(http.MethodPost)
 	http.Handle("/v1/users/logout", Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.LogoutUser)))
 	http.Handle("/v1/users/{id}", Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.GetCurrentProfile)))
@@ -42,5 +46,38 @@ func Server() {
 	r.HandleFunc("/v1/tweets/{id_tweet}/unlike", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Tweets.UnlikeTweet)).ServeHTTP(w, r)
 	}).Methods(http.MethodDelete)
-	http.ListenAndServe("localhost:8080", r)
+	r.Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.WriteHeader(http.StatusOK)
+
+	})
+	err := http.ListenAndServe("localhost:8080", r)
+	fmt.Println(err)
+}
+
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Received request: %s %s", r.Method, r.URL.Path)
+
+		recorder := httptest.NewRecorder()
+
+		next.ServeHTTP(recorder, r)
+
+		log.Printf("Sent response: %d %s", recorder.Code, http.StatusText(recorder.Code))
+
+		for k, v := range recorder.Header() {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(recorder.Code)
+
+		recorder.Body.WriteTo(w)
+	})
+}
+func CorsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
 }
