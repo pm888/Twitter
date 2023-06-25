@@ -2,8 +2,16 @@ openapi: 3.0.0
 info:
   version: 1.0.0
   title: Tweeter API
+  contact:
+   email: mo.pm@icloud.com
+"servers": [
+  {
+    "url": "http://localhost:8080",
+    "description": "Localhost"
+  }
+]
 paths:
-  /v1/users:
+  /v1/users/create:
     post:
       tags:
         - Users
@@ -315,12 +323,19 @@ components:
     User:
       type: object
       properties:
+        name:
+          type: string
+          format: name
         email:
           type: string
           format: email
         password:
           type: string
           format: password
+        birthdate:
+          type: string
+          format: date
+
     UserLoginRequest:
       type: object
       properties:
@@ -400,17 +415,3 @@ components:
       properties:
         error:
           type: string
-
-    Tweeter_like:
-          type: object
-          properties:
-            Autor:
-              type: integer
-            Id_post:
-              type: integer
-            Whose_like:
-              type: integer
-          required:
-            - Autor
-            - Id_post
-            - Whose_like

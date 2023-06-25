@@ -60,21 +60,19 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var existingUserID int
 	err = pg.DB.QueryRow(query, newUser.Email).Scan(&existingUserID)
 	if err == nil {
-		http.Error(w, "User with this email already exists", http.StatusBadRequest)
+		services.ReturnErr(w, "User with this email already exists", http.StatusBadRequest)
 		return
 	} else if err != sql.ErrNoRows {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" {
-		http.Error(w, "Invalid user data", http.StatusBadRequest)
+	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.BirthDate == "" {
+		services.ReturnErr(w, "Invalid user data", http.StatusBadRequest)
 		return
 	}
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	newUser.Password = string(hashedPassword)
@@ -82,10 +80,10 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	err = pg.DB.QueryRow(query, newUser.Name, newUser.Password, newUser.Email, newUser.Nickname, newUser.Location, newUser.Bio, newUser.BirthDate).Scan(&newUser.ID)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-			http.Error(w, "This user is already added", http.StatusBadRequest)
+			services.ReturnErr(w, "This user is already added", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
