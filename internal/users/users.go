@@ -469,11 +469,13 @@ func CheckEmail(newUser *Users) string {
 }
 
 func GetCurrentProfile(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(int)
+	vars := mux.Vars(r)
+	userID := vars["id"]
 
-	query := "SELECT id, name, email, birthdate,bio,location,nicname  FROM users_tweeter WHERE id = $1"
+	query := "SELECT id, name, email, birthdate,bio,location,nickname  FROM users_tweeter WHERE id = $1"
 	var user Users
 	err := pg.DB.QueryRow(query, userID).Scan(&user.ID, &user.Name, &user.Email, &user.BirthDate, &user.Bio, &user.Location, &user.Nickname)
+	fmt.Println(err)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
