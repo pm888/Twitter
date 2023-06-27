@@ -486,7 +486,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
-	query := "SELECT id, name, email, bio FROM users WHERE id = $1"
+	query := "SELECT id, name, email, bio FROM users_tweeter WHERE id = $1"
 	var user Users
 	err := pg.DB.QueryRow(query, userID).Scan(&user.ID, &user.Name, &user.Email, &user.Bio)
 	if err != nil {

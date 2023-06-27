@@ -19,6 +19,7 @@ func Server() {
 	r.HandleFunc("/v1/users/login", Serviceuser.LoginUsers).Methods(http.MethodPost)
 	http.Handle("/v1/users/logout", Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.LogoutUser)))
 	http.Handle("/v1/users/{id}", Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.GetCurrentProfile)))
+	r.HandleFunc("/v1/users/profile/{id}", Serviceuser.GetUserProfile).Methods(http.MethodGet)
 	r.HandleFunc("/v1/users/reset-password", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.ResetPassword)).ServeHTTP(w, r)
 	}).Methods(http.MethodPost)
