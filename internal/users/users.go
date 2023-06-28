@@ -20,11 +20,8 @@ import (
 	"time"
 )
 
-var APIKEY string
-
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	apikey := r.Header.Get("X-API-KEY")
-	APIKEY = apikey
 	cookie, err := r.Cookie("session")
 	if apikey == "" && (err != nil || cookie == nil) {
 		fmt.Println(err)
@@ -171,7 +168,8 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	apikey := APIKEY
+	apikey := r.Header.Get("X-API-KEY")
+	fmt.Println(apikey)
 	if apikey == "" {
 		cookie, err := r.Cookie("session")
 		if err != nil {
@@ -200,7 +198,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
 	} else {
-		err := DeleteUserSession(APIKEY)
+		err := DeleteUserSession(apikey)
 		if err != nil {
 			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 			return
