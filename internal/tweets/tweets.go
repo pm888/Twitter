@@ -84,11 +84,8 @@ func EditTweet(w http.ResponseWriter, r *http.Request) {
 	}
 	keystring := strings.Join(key, ", ")
 	values = append(values, idTweet)
-	fmt.Println(idTweet, "<<<<<<")
 	if cookie != nil || apikey != "" {
 		query := fmt.Sprintf("UPDATE tweets SET %s WHERE tweet_id = $%d", keystring, len(values))
-		fmt.Println(query)
-		fmt.Println(values)
 		_, err = pg.DB.Exec(query, values...)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
