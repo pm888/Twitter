@@ -28,9 +28,13 @@ func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next htt
 		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
-	if cookie != nil {
-		sessionID := cookie.Value
+	var sessionID string
+	if apikey != "" {
+		sessionID = apikey
+	} else if cookie != nil {
+		sessionID = cookie.Value
+	}
+	if cookie != nil || apikey != "" {
 		query := "SELECT user_id FROM user_session WHERE login_token = $1"
 		var userID int
 		err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
@@ -41,18 +45,7 @@ func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next htt
 
 		ctx := context.WithValue(r.Context(), "userID", userID)
 		r = r.WithContext(ctx)
-	} else if apikey != "" {
-		sessionID := apikey
-		query := "SELECT user_id FROM user_session WHERE login_token = $1"
-		var userID int
-		err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
-		if err != nil {
-			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
-		ctx := context.WithValue(r.Context(), "userID", userID)
-		r = r.WithContext(ctx)
 	} else {
 		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
 		return
