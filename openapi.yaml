@@ -110,33 +110,50 @@ paths:
         '500':
           description: Internal Server Error
 
-  /v1/users:
+  /v1/users/edit:
     patch:
       tags:
         - Users
       summary: Edit User Profile
+      parameters:
+        - name: X-API-KEY
+          in: header
+          description: API key for authorization
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUserProfile'
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
       responses:
         '200':
           description: Profile updated successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+                $ref: '#/components/schemas/SuccessResponse'
         '400':
-          description: Bad Request
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 
   /v1/users/reset-password:
     post:
@@ -422,6 +439,31 @@ components:
       type: object
       properties:
         error:
+          type: string
+    UserProfileUpdateRequest:
+        type: object
+        properties:
+          name:
+            type: string
+          email:
+            type: string
+          password:
+            type: string
+          birthdate:
+            type: string
+            format: date
+          bio:
+            type: string
+          nickname:
+            type: string
+          location:
+            type: string
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
           type: string
   securitySchemes:
     apiKey:

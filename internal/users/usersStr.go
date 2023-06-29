@@ -17,8 +17,6 @@ type Users struct {
 	Bio                string `json:"bio"`
 	Location           string `json:"location"`
 	Tweet
-	Following []int
-	Followers []int
 }
 
 type ReplaceMyData struct {
