@@ -207,12 +207,19 @@ paths:
       tags:
         - Tweets
       summary: Create Tweet
+      parameters:
+        - name: X-API-KEY
+          in: header
+          description: API key for authentication
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Tweet'
+              $ref: '#/components/schemas/TweetRequest'
       responses:
         '201':
           description: Tweet created successfully
@@ -228,6 +235,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal Server Error
+
+
 
   /v1/tweets/{id}:
     get:
@@ -412,17 +421,49 @@ components:
         id2:
           type: string
     Tweet:
-      type: object
-      properties:
-        userId:
-          type: integer
-        content:
-          type: string
+        type: object
+        properties:
+          tweet_id:
+            type: integer
+          user_id:
+            type: integer
+          text:
+            type: string
+          created_at:
+            type: string
+            format: date-time
+          public:
+            type: boolean
+          only_followers:
+            type: boolean
+          only_mutual_followers:
+            type: boolean
+          only_me:
+            type: boolean
+          parent_tweet_id:
+            type: integer
     ErrorResponse:
       type: object
       properties:
         error:
           type: string
+    TweetRequest:
+        type: object
+        properties:
+          text:
+            type: string
+          public:
+            type: boolean
+          only_followers:
+            type: boolean
+          only_mutual_followers:
+            type: boolean
+          only_me:
+            type: boolean
+          parent_tweet_id:
+            type: integer
+        required:
+          - text
   securitySchemes:
     apiKey:
       type: apiKey
