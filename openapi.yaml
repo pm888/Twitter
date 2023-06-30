@@ -109,6 +109,27 @@ paths:
                 $ref: '#/components/schemas/UserProfile'
         '500':
           description: Internal Server Error
+  /v1/users/profile/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get User Profile
+      parameters:
+        - name: id
+          in: path
+          description: User ID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Current User Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '500':
+          description: Internal Server Error
 
   /v1/users:
     patch:
