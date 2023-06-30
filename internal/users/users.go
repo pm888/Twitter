@@ -21,24 +21,42 @@ import (
 )
 
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
+	apikey := r.Header.Get("X-API-KEY")
 	cookie, err := r.Cookie("session")
-	if err != nil || cookie == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if apikey == "" && (err != nil || cookie == nil) {
+		fmt.Println(err)
+		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	sessionID := cookie.Value
+	if cookie != nil {
+		sessionID := cookie.Value
+		query := "SELECT user_id FROM user_session WHERE login_token = $1"
+		var userID int
+		err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
+		if err != nil {
+			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	query := "SELECT id FROM users_tweeter WHERE logintoken = $1"
-	var userID int
-	err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		ctx := context.WithValue(r.Context(), "userID", userID)
+		r = r.WithContext(ctx)
+	} else if apikey != "" {
+		sessionID := apikey
+		query := "SELECT user_id FROM user_session WHERE login_token = $1"
+		var userID int
+		err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
+		if err != nil {
+			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), "userID", userID)
+		r = r.WithContext(ctx)
+	} else {
+		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
-	ctx := context.WithValue(r.Context(), "userID", userID)
-	r = r.WithContext(ctx)
 
 	next.ServeHTTP(w, r)
 }
@@ -63,7 +81,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		services.ReturnErr(w, "User with this email already exists", http.StatusBadRequest)
 		return
 	} else if err != sql.ErrNoRows {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if newUser.Name == "" || newUser.Email == "" || newUser.Password == "" || newUser.BirthDate == "" {
@@ -106,7 +124,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 	var savedPassword string
 	err = pg.DB.QueryRow(query, user.Email).Scan(&userID, &savedPassword)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -126,7 +144,7 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		insertQuery := "INSERT INTO user_session (user_id, login_token, timestamp) VALUES ($1, $2, $3)"
 		_, err = pg.DB.Exec(insertQuery, userID, cookie.Value, time.Now())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -144,26 +162,54 @@ func LoginUsers(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
 	} else {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	cookie := &http.Cookie{
-		Name:    "session",
-		Value:   "",
-		Expires: time.Now().AddDate(0, 0, -1),
-		Path:    "/",
-	}
-	http.SetCookie(w, cookie)
+	apikey := r.Header.Get("X-API-KEY")
+	fmt.Println(apikey)
+	if apikey == "" {
+		cookie, err := r.Cookie("session")
+		if err != nil {
+			services.ReturnErr(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-	response := map[string]interface{}{
-		"status":  "success",
-		"message": "Logged out successfully",
+		err = DeleteUserSession(cookie.Value)
+		if err != nil {
+			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		cookie = &http.Cookie{
+			Name:    "session",
+			Value:   "",
+			Expires: time.Now().AddDate(0, 0, -1),
+			Path:    "/",
+		}
+		http.SetCookie(w, cookie)
+
+		response := map[string]interface{}{
+			"status":  "success",
+			"message": "Logged out successfully",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	} else {
+		err := DeleteUserSession(apikey)
+		if err != nil {
+			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		response := map[string]interface{}{
+			"status":  "success",
+			"message": "Logged out successfully",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
 }
 
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -513,4 +559,13 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+func DeleteUserSession(token string) error {
+	query := "DELETE FROM user_session WHERE login_token = $1"
+	_, err := pg.DB.Exec(query, token)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
