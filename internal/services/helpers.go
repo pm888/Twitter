@@ -2,6 +2,8 @@ package services
 
 import (
 	Postgresql "Twitter_like_application/internal/database/pg"
+	"regexp"
+
 	//Serviceuser "Twitter_like_application/internal/users"
 
 	"bufio"
@@ -133,4 +135,26 @@ func ReturnErr(w http.ResponseWriter, err string, code int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(errj)
+}
+func CheckEmail(w http.ResponseWriter, email string) {
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if !emailRegex.MatchString(email) {
+		ReturnErr(w, "Invalid email format", http.StatusBadRequest)
+		return
+	}
+	if len(email) > 50 {
+		ReturnErr(w, "Name exceeds maximum length", http.StatusBadRequest)
+		return
+	}
+}
+func CheckPassword(w http.ResponseWriter, password string) {
+	passwordRegex := regexp.MustCompile(`^[a-zA-Z]+$`)
+	if !passwordRegex.MatchString(password) {
+		ReturnErr(w, "Invalid password format", http.StatusBadRequest)
+		return
+	}
+	if len(password) > 100 {
+		ReturnErr(w, "Password exceeds maximum length", http.StatusBadRequest)
+		return
+	}
 }
