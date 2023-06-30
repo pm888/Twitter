@@ -17,8 +17,6 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -311,40 +309,6 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Println("Done")
 }
-
-func EditProfile(w http.ResponseWriter, r *http.Request) {
-	apikey := r.Header.Get("X-API-KEY")
-
-	if apikey == "" {
-		userID := r.Context().Value("userID").(int)
-		err := UpdateProfile(w, r, userID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		sessionID := apikey
-		query := "SELECT user_id FROM user_session WHERE login_token = $1"
-		var userID int
-		err := pg.DB.QueryRow(query, sessionID).Scan(&userID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		err = UpdateProfile(w, r, userID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	response := map[string]interface{}{
-		"status":  "success",
-		"message": "Profile updated successfully",
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
 func GetFollowers(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
 	if userID == "" {
@@ -561,60 +525,5 @@ func DeleteUserSession(token string) error {
 		return err
 	}
 
-	return nil
-}
-func UpdateProfile(w http.ResponseWriter, r *http.Request, userID int) error {
-	var updatedProfile Users
-	err := json.NewDecoder(r.Body).Decode(&updatedProfile)
-	if err != nil {
-		return fmt.Errorf("failed to decode request body: %v", err)
-	}
-	values := []any{}
-	key := []string{}
-	if updatedProfile.Name != "" {
-		values = append(values, updatedProfile.Name)
-		key = append(key, " name = $"+strconv.Itoa(len(key)+1))
-	}
-	if updatedProfile.Password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updatedProfile.Password), bcrypt.DefaultCost)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return err
-		}
-		values = append(values, string(hashedPassword))
-		key = append(key, " password = $"+strconv.Itoa(len(key)+1))
-	}
-
-	if updatedProfile.Email != "" {
-		values = append(values, updatedProfile.Email)
-		key = append(key, " email = $"+strconv.Itoa(len(key)+1))
-	}
-	if updatedProfile.BirthDate != "" {
-		values = append(values, updatedProfile.BirthDate)
-		key = append(key, " birthdate = $"+strconv.Itoa(len(key)+1))
-	}
-	if updatedProfile.Nickname != "" {
-		values = append(values, updatedProfile.Nickname)
-		key = append(key, " nickname = $"+strconv.Itoa(len(key)+1))
-	}
-	if updatedProfile.Bio != "" {
-		values = append(values, updatedProfile.Bio)
-		key = append(key, " bio = $"+strconv.Itoa(len(key)+1))
-	}
-	if updatedProfile.Location != "" {
-		values = append(values, updatedProfile.Location)
-		key = append(key, " location = $"+strconv.Itoa(len(key)+1))
-
-	}
-	values = append(values, userID)
-	keystring := strings.Join(key, ", ")
-	query := fmt.Sprintf("UPDATE users_tweeter SET %s WHERE id = $%d", keystring, len(values))
-	fmt.Println(query)
-	fmt.Println(values)
-	_, err = pg.DB.Exec(query, values...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return err
-	}
 	return nil
 }
