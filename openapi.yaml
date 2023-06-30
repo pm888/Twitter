@@ -86,12 +86,12 @@ paths:
         - Users
       summary: Get Current User Profile
       parameters:
-        - name: id
-          in: path
-          description: User ID
+        - name: X-API-KEY
+          in: header
+          description: API Key
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: Current User Profile
@@ -101,6 +101,7 @@ paths:
                 $ref: '#/components/schemas/UserProfile'
         '500':
           description: Internal Server Error
+
 
   /v1/users:
     patch:

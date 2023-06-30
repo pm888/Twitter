@@ -469,8 +469,7 @@ func CheckEmail(newUser *Users) string {
 }
 
 func GetCurrentProfile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["id"]
+	userID := r.Context().Value("userID").(int)
 
 	query := "SELECT id, name, email, birthdate,bio,location,nickname  FROM users_tweeter WHERE id = $1"
 	var user Users
