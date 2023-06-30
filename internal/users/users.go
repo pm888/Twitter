@@ -29,20 +29,8 @@ func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next htt
 		return
 	}
 
-	if cookie != nil {
+	if cookie != nil || apikey != "" {
 		sessionID := cookie.Value
-		query := "SELECT user_id FROM user_session WHERE login_token = $1"
-		var userID int
-		err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
-		if err != nil {
-			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), "userID", userID)
-		r = r.WithContext(ctx)
-	} else if apikey != "" {
-		sessionID := apikey
 		query := "SELECT user_id FROM user_session WHERE login_token = $1"
 		var userID int
 		err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
