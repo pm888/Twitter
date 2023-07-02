@@ -1,12 +1,14 @@
 package services
 
-import "C"
 import (
 	Postgresql "Twitter_like_application/internal/database/pg"
-	"golang.org/x/crypto/bcrypt"
-	"regexp"
+	"fmt"
+	"gopkg.in/go-playground/validator.v9"
 	"time"
+	"unicode"
 
+	//"Twitter_like_application/internal/users"
+	"golang.org/x/crypto/bcrypt"
 	//Serviceuser "Twitter_like_application/internal/users"
 
 	"bufio"
@@ -22,21 +24,6 @@ import (
 type ErrResponse struct {
 	Errtext string `json:"errtext"`
 }
-type CheckVal struct {
-	CheckNameRegex     *regexp.Regexp
-	CheckEmailRegex    *regexp.Regexp
-	CheckBioRegex      *regexp.Regexp
-	CheckPasswordRegex *regexp.Regexp
-	CheckNicknameRegex *regexp.Regexp
-}
-
-var (
-	CheckNameRegex     *regexp.Regexp
-	CheckEmailRegex    *regexp.Regexp
-	CheckBioRegex      *regexp.Regexp
-	CheckPasswordRegex *regexp.Regexp
-	CheckNicknameRegex *regexp.Regexp
-)
 
 func GenerateResetToken() string {
 	const resetTokenLength = 32
@@ -154,117 +141,102 @@ func ReturnErr(w http.ResponseWriter, err string, code int) {
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(errj)
 }
-func Reg() {
-	CheckNameRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\s.\-]+$`)
-	CheckBioRegex = regexp.MustCompile(`^[a-zA-Zа-яА-ЯёЁ\s.\-]+$`)
-	CheckEmailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	CheckPasswordRegex = regexp.MustCompile(`^[a-zA-Z0-9!@#$%^&*()-_=+{}\[\]|\\;:'",.<>/?]+$`)
-	CheckNicknameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-
-}
-
-func CheckName(w http.ResponseWriter, name string) {
-	if !CheckNameRegex.MatchString(name) {
-		ReturnErr(w, "Invalid name format", http.StatusBadRequest)
-		return
-	}
-	if len(name) > 100 {
-		ReturnErr(w, "Name exceeds maximum length", http.StatusBadRequest)
-		return
-	}
-}
-func CheckEmail(w http.ResponseWriter, email string) {
-	if !CheckEmailRegex.MatchString(email) {
-		ReturnErr(w, "Invalid email format", http.StatusBadRequest)
-		return
-	}
-	if len(email) > 100 {
-		ReturnErr(w, "Email exceeds maximum length", http.StatusBadRequest)
-		return
-	}
-}
-func CheckBio(w http.ResponseWriter, bio string) {
-	if !CheckBioRegex.MatchString(bio) {
-		ReturnErr(w, "Invalid bio format", http.StatusBadRequest)
-		return
-	}
-	if len(bio) > 400 {
-		ReturnErr(w, "Bio exceeds maximum length", http.StatusBadRequest)
-		return
-	}
-}
-func CheckLocation(w http.ResponseWriter, location string) {
-	if !CheckBioRegex.MatchString(location) {
-		ReturnErr(w, "Invalid location format", http.StatusBadRequest)
-		return
-	}
-	if len(location) > 100 {
-		ReturnErr(w, "Location exceeds maximum length", http.StatusBadRequest)
-		return
-	}
-}
-func CheckNickname(w http.ResponseWriter, nickname string) {
-	if !CheckNicknameRegex.MatchString(nickname) {
-		ReturnErr(w, "Invalid nickname format", http.StatusBadRequest)
-		return
-	}
-	if len(nickname) > 100 {
-		ReturnErr(w, "Nikname maximum length", http.StatusBadRequest)
-		return
-	}
-}
-func CheckBirthDate(w http.ResponseWriter, birthdate string) {
-	_, err := time.Parse("2006-01-02", birthdate)
-	if err != nil {
-		ReturnErr(w, "Invalid birth date format", http.StatusBadRequest)
-		return
-	}
-}
-func CheckPassword(w http.ResponseWriter, password string) {
-	if !CheckPasswordRegex.MatchString(password) {
-		ReturnErr(w, "Invalid password format", http.StatusBadRequest)
-		return
-	}
-	if len(password) > 100 {
-		ReturnErr(w, "Password maximum length 100", http.StatusBadRequest)
-		return
-	}
-	if len(password) < 8 {
-		ReturnErr(w, "Password minimum length 8", http.StatusBadRequest)
-		return
-	}
-	if !containsUppercase(password) {
-		ReturnErr(w, "Password must contain at least one uppercase letter", http.StatusBadRequest)
-		return
-	}
-	if !containsSpecialCharacter(password) {
-		ReturnErr(w, "Password must contain at least one special character", http.StatusBadRequest)
-		return
-	}
-}
-
-func containsUppercase(s string) bool {
-	for _, char := range s {
-		if char >= 'A' && char <= 'Z' {
-			return true
-		}
-	}
-	return false
-}
-
-func containsSpecialCharacter(s string) bool {
-	specialCharacters := "!@#$%^&*()-_=+{}[]|\\;:'\",.<>/?"
-	for _, char := range s {
-		if strings.ContainsRune(specialCharacters, char) {
-			return true
-		}
-	}
-	return false
-}
-func HashedPassword(w http.ResponseWriter, password string) []byte {
+func HashedPassword(password string) (error, []byte) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return err, nil
 	}
-	return hashedPassword
+	return nil, hashedPassword
+}
+
+func HasDigit(password string) bool {
+	for _, char := range password {
+		if unicode.IsDigit(char) {
+			return true
+		}
+	}
+	return false
+}
+
+func HasAllowedSpecialChar(password string) bool {
+	allowedSpecialChars := []rune{'!', '@', '#', '$'}
+	for _, char := range password {
+		if unicode.IsPunct(char) && containsRune(allowedSpecialChars, char) {
+			return true
+		}
+	}
+	return false
+}
+
+func HasCommonWord(password string) bool {
+	commonWords := []string{"password", "12345678", "87654321", "qwerty123"}
+	for _, word := range commonWords {
+		if strings.Contains(password, word) {
+			return true
+		}
+	}
+	return false
+}
+
+func HasSequence(password string) bool {
+	sequences := []string{"123", "abc", "xyz"}
+	for _, sequence := range sequences {
+		if strings.Contains(password, sequence) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsRune(runes []rune, char rune) bool {
+	for _, r := range runes {
+		if r == char {
+			return true
+		}
+	}
+	return false
+}
+func ValidatePassword(fl validator.FieldLevel) bool {
+	password := fl.Field().String()
+	hasUpperCase := false
+	hasSpecialChar := false
+
+	for _, char := range password {
+		if unicode.IsUpper(char) {
+			hasUpperCase = true
+		} else if !unicode.IsLetter(char) && !unicode.IsNumber(char) {
+			hasSpecialChar = true
+		}
+	}
+	if !hasUpperCase || !hasSpecialChar {
+		return false
+	}
+	if password != "" {
+		if HasDigit(password) {
+			return true
+		}
+		if HasAllowedSpecialChar(password) {
+			return true
+		}
+		if HasSequence(password) {
+			return true
+		}
+		if HasCommonWord(password) {
+			return true
+		}
+		return true
+	}
+
+	return true
+}
+func ValidateDateTime(fl validator.FieldLevel) bool {
+	dateStr := fl.Field().String()
+	fmt.Println(dateStr)
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return false
+	}
+	currentDate := time.Now()
+	minDate := currentDate.AddDate(-7, 0, 0)
+	return !date.After(minDate)
 }

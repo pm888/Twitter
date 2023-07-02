@@ -1,32 +1,23 @@
 package users
 
 import (
+	"gopkg.in/go-playground/validator.v9"
 	"time"
 )
 
 type Users struct {
 	ID                 int
-	Name               string `json:"name"`
-	Password           string `json:"password"`
-	Email              string `json:"email"`
+	Name               string `json:"name" validate:"omitempty"`
+	Password           string `json:"password" validate:"omitempty"`
+	Email              string `json:"email" validate:"omitempty,email"`
 	EmailToken         string
 	ConfirmEmailToken  bool
 	ResetPasswordToken string
-	BirthDate          string `json:"birthdate"`
-	Nickname           string `json:"nickname"`
-	Bio                string `json:"bio"`
-	Location           string `json:"location"`
+	BirthDate          string `json:"birthdate" validate:"omitempty"`
+	Nickname           string `json:"nickname" validate:"omitempty"`
+	Bio                string `json:"bio" validate:"omitempty"`
+	Location           string `json:"location" validate:"omitempty"`
 	Tweet
-}
-
-type ReplaceMyData struct {
-	NewName      string `json:"new_name"`
-	NewPassword  string `json:"new_password"`
-	NewEmail     string `json:"new_email"`
-	NewBirthDate string `json:"new_birth_date"`
-	NewNickname  string `json:"new_nickname"`
-	NewBio       string `json:"new_bio"`
-	NewLocation  string `json:"new_location"`
 }
 
 type Tweet struct {
@@ -72,4 +63,17 @@ type Tweeter_like struct {
 	Autor      int `json:"autor"`
 	Id_post    int `json:"id_post"`
 	Whose_like int `json:"whose_like"`
+}
+type UserVal struct {
+	validate *validator.Validate
+}
+type EditUser struct {
+	ID        int
+	Name      string `json:"name" validate:"omitempty,alphaunicode"`
+	Password  string `json:"password" validate:"omitempty,checkPassword,min=8,max=100"`
+	Email     string `json:"email" validate:"omitempty,email"`
+	BirthDate string `json:"birthdate" validate:"omitempty,datetime"`
+	Nickname  string `json:"nickname" validate:"omitempty,min=3,max=50"`
+	Bio       string `json:"bio" validate:"omitempty,max=500"`
+	Location  string `json:"location" validate:"omitempty,max=100"`
 }

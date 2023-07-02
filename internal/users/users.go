@@ -14,17 +14,42 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/go-playground/validator.v9"
 	"net/http"
 	"net/smtp"
 	"net/url"
 	"time"
 )
 
+func (v *UserVal) RegisterCustomValidations() {
+	if err := v.validate.RegisterValidation("checkPassword", services.ValidatePassword); err != nil {
+		return
+
+	}
+	if err := v.validate.RegisterValidation("datetime", services.ValidateDateTime); err != nil {
+		return
+	}
+}
+
+func (v *UserVal) ValidateStruct(s interface{}) error {
+	if err := v.validate.Struct(s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func NewUserVal() *UserVal {
+	validate := validator.New()
+	v := &UserVal{
+		validate: validate,
+	}
+	v.RegisterCustomValidations()
+	return v
+}
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	apikey := r.Header.Get("X-API-KEY")
 	cookie, err := r.Cookie("session")
 	if apikey == "" && (err != nil || cookie == nil) {
-		fmt.Println(err)
 		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
