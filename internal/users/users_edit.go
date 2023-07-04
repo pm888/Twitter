@@ -5,15 +5,63 @@ import (
 	"Twitter_like_application/internal/services"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/go-playground/validator.v9"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 func EditProfile(w http.ResponseWriter, r *http.Request) {
-	v := NewUserVal()
+	userValid := &UserValid{
+		validate: validator.New(),
+		validErr: make(map[string]string),
+	}
+
+	err := userValid.validate.RegisterValidation("checkPassword", func(fl validator.FieldLevel) bool {
+		return CheckPassword(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
+	err = userValid.validate.RegisterValidation("checkName", func(fl validator.FieldLevel) bool {
+		return CheckName(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
+
+	err = userValid.validate.RegisterValidation("checkDataTime", func(fl validator.FieldLevel) bool {
+		return CheckDataTime(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
+	err = userValid.validate.RegisterValidation("checkNickname", func(fl validator.FieldLevel) bool {
+		return CheckNickName(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
+	err = userValid.validate.RegisterValidation("checkBio", func(fl validator.FieldLevel) bool {
+		return CheckBio(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
+	err = userValid.validate.RegisterValidation("checkLocation", func(fl validator.FieldLevel) bool {
+		return CheckLocation(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
+	err = userValid.validate.RegisterValidation("email", func(fl validator.FieldLevel) bool {
+		return CheckEmailVal(fl, userValid)
+	})
+	if err != nil {
+		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	}
 	userID := r.Context().Value("userID").(int)
-	err := updateProfile(r, userID, v)
+	err = updateProfile(r, userID, userValid)
 	if err != nil {
 		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -29,7 +77,8 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-func updateProfile(r *http.Request, userID int, v *UserVal) error {
+
+func updateProfile(r *http.Request, userID int, v *UserValid) error {
 	var (
 		hashedPassword []byte
 		key            = []string{}
@@ -43,7 +92,12 @@ func updateProfile(r *http.Request, userID int, v *UserVal) error {
 	}
 	err = v.validate.Struct(updatedProfile)
 	if err != nil {
-		return err
+		if validationErrs, ok := err.(validator.ValidationErrors); ok {
+			for _, e := range validationErrs {
+				v.failedValidations = append(v.failedValidations, e.Field())
+			}
+		}
+		return v
 	}
 	if updatedProfile.Name != "" {
 		values = append(values, updatedProfile.Name)
@@ -82,12 +136,10 @@ func updateProfile(r *http.Request, userID int, v *UserVal) error {
 	}
 	values = append(values, userID)
 	keyString := strings.Join(key, ", ")
-	fmt.Println(values, keyString)
 	query := fmt.Sprintf("UPDATE users_tweeter SET %s WHERE id = $%d", keyString, len(values))
-	fmt.Println(query)
 	_, err = pg.DB.Exec(query, values...)
 	if err != nil {
 		return err
 	}
-	return nil
+	return err
 }

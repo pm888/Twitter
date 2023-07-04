@@ -69,11 +69,11 @@ type UserVal struct {
 }
 type EditUser struct {
 	ID        int
-	Name      string `json:"name" validate:"omitempty,alphaunicode"`
-	Password  string `json:"password" validate:"omitempty,checkPassword,min=8,max=100"`
+	Name      string `json:"name" validate:"omitempty,checkName"`
+	Password  string `json:"password" validate:"omitempty,checkPassword"`
 	Email     string `json:"email" validate:"omitempty,email"`
-	BirthDate string `json:"birthdate" validate:"omitempty,datetime"`
-	Nickname  string `json:"nickname" validate:"omitempty,min=3,max=50"`
-	Bio       string `json:"bio" validate:"omitempty,max=500"`
-	Location  string `json:"location" validate:"omitempty,max=100"`
+	BirthDate string `json:"birthdate" validate:"omitempty,checkDataTime"`
+	Nickname  string `json:"nickname" validate:"omitempty,checkNickname"`
+	Bio       string `json:"bio" validate:"omitempty,checkBio"`
+	Location  string `json:"location" validate:"omitempty,checkLocation"`
 }

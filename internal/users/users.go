@@ -18,34 +18,38 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"strings"
 	"time"
 )
 
-func (v *UserVal) RegisterCustomValidations() {
-	if err := v.validate.RegisterValidation("checkPassword", services.ValidatePassword); err != nil {
-		return
-
-	}
-	if err := v.validate.RegisterValidation("datetime", services.ValidateDateTime); err != nil {
-		return
-	}
+type UserValid struct {
+	validate          *validator.Validate
+	failedValidations []string
+	validErr          map[string]string
+}
+type NameVal struct {
+	short    bool
+	long     bool
+	realName bool
 }
 
-func (v *UserVal) ValidateStruct(s interface{}) error {
-	if err := v.validate.Struct(s); err != nil {
-		return err
+func (v *UserValid) Error() string {
+	var pairs []string
+	for k, v := range v.validErr {
+		pairs = append(pairs, fmt.Sprintf("%s: %s", k, v))
 	}
-	return nil
+
+	result := strings.Join(pairs, "; ")
+	return result
+}
+func (v *UserValid) GetFailedValidations() []string {
+	return v.failedValidations
 }
 
-func NewUserVal() *UserVal {
-	validate := validator.New()
-	v := &UserVal{
-		validate: validate,
-	}
-	v.RegisterCustomValidations()
-	return v
-}
+//func (v *UserValid) AddFailedValidation(validation string) {
+//	v.failedValidations = append(v.failedValidations, validation)
+//}
+
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	apikey := r.Header.Get("X-API-KEY")
 	cookie, err := r.Cookie("session")
@@ -468,6 +472,7 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(statistics)
 }
+
 func CheckEmail(newUser *Users) string {
 	token := make([]byte, 32)
 	_, err := rand.Read(token)

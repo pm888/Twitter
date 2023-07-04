@@ -2,20 +2,12 @@ package services
 
 import (
 	Postgresql "Twitter_like_application/internal/database/pg"
-	"fmt"
-	"gopkg.in/go-playground/validator.v9"
-	"time"
-	"unicode"
-
-	//"Twitter_like_application/internal/users"
-	"golang.org/x/crypto/bcrypt"
-	//Serviceuser "Twitter_like_application/internal/users"
-
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -147,96 +139,4 @@ func HashedPassword(password string) (error, []byte) {
 		return err, nil
 	}
 	return nil, hashedPassword
-}
-
-func HasDigit(password string) bool {
-	for _, char := range password {
-		if unicode.IsDigit(char) {
-			return true
-		}
-	}
-	return false
-}
-
-func HasAllowedSpecialChar(password string) bool {
-	allowedSpecialChars := []rune{'!', '@', '#', '$'}
-	for _, char := range password {
-		if unicode.IsPunct(char) && containsRune(allowedSpecialChars, char) {
-			return true
-		}
-	}
-	return false
-}
-
-func HasCommonWord(password string) bool {
-	commonWords := []string{"password", "12345678", "87654321", "qwerty123"}
-	for _, word := range commonWords {
-		if strings.Contains(password, word) {
-			return true
-		}
-	}
-	return false
-}
-
-func HasSequence(password string) bool {
-	sequences := []string{"123", "abc", "xyz"}
-	for _, sequence := range sequences {
-		if strings.Contains(password, sequence) {
-			return true
-		}
-	}
-	return false
-}
-
-func containsRune(runes []rune, char rune) bool {
-	for _, r := range runes {
-		if r == char {
-			return true
-		}
-	}
-	return false
-}
-func ValidatePassword(fl validator.FieldLevel) bool {
-	password := fl.Field().String()
-	hasUpperCase := false
-	hasSpecialChar := false
-
-	for _, char := range password {
-		if unicode.IsUpper(char) {
-			hasUpperCase = true
-		} else if !unicode.IsLetter(char) && !unicode.IsNumber(char) {
-			hasSpecialChar = true
-		}
-	}
-	if !hasUpperCase || !hasSpecialChar {
-		return false
-	}
-	if password != "" {
-		if HasDigit(password) {
-			return true
-		}
-		if HasAllowedSpecialChar(password) {
-			return true
-		}
-		if HasSequence(password) {
-			return true
-		}
-		if HasCommonWord(password) {
-			return true
-		}
-		return true
-	}
-
-	return true
-}
-func ValidateDateTime(fl validator.FieldLevel) bool {
-	dateStr := fl.Field().String()
-	fmt.Println(dateStr)
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return false
-	}
-	currentDate := time.Now()
-	minDate := currentDate.AddDate(-7, 0, 0)
-	return !date.After(minDate)
 }
