@@ -16,12 +16,17 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 		validate: validator.New(),
 		validErr: make(map[string]string),
 	}
+	updatedProfile := EditUserRequest{}
 	if err := RegisterUsersValidations(userValid); err != nil {
 		return
 	}
-
+	err := json.NewDecoder(r.Body).Decode(&updatedProfile)
+	if err != nil {
+		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	userID := r.Context().Value("userID").(int)
-	err := updateProfile(r, userID, userValid)
+	err = updateProfile(&updatedProfile, userID, userValid)
 	if err != nil {
 		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -38,18 +43,13 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateProfile(r *http.Request, userID int, v *UserValid) error {
+func updateProfile(updatedProfile *EditUserRequest, userID int, v *UserValid) error {
 	var (
 		hashedPassword []byte
 		keys           = []string{}
-		updatedProfile = EditUserRequest{}
 		values         = []any{}
 	)
-	err := json.NewDecoder(r.Body).Decode(&updatedProfile)
-	if err != nil {
-		return fmt.Errorf("failed to decode request body: %v", err)
-	}
-	err = v.validate.Struct(updatedProfile)
+	err := v.validate.Struct(updatedProfile)
 	if err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			for _, e := range validationErrs {
