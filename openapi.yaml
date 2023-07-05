@@ -440,25 +440,25 @@ components:
       properties:
         name:
           type: string
-          format: name
+          format: string
         email:
           type: string
-          format: email
+          format: string
         password:
           type: string
-          format: password
+          format: string
         birthdate:
           type: string
-          format: date
+          format: date-time
         nickname:
           type: string
-          format: nickname
+          format: string
         bio:
           type: string
-          format: bio
+          format: string
         location:
           type: string
-          format: location
+          format: string
     SuccessResponse:
       type: object
       properties:

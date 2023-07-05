@@ -1,8 +1,6 @@
 package users
 
-import (
-	"time"
-)
+import Tweets "Twitter_like_application/internal/tweets"
 
 type Users struct {
 	ID                 int
@@ -16,27 +14,11 @@ type Users struct {
 	Nickname           string `json:"nickname" validate:"omitempty"`
 	Bio                string `json:"bio" validate:"omitempty"`
 	Location           string `json:"location" validate:"omitempty"`
-	Tweet
-}
-
-type Tweet struct {
-	TweetID             int       `json:"tweet_id"`
-	UserID              int       `json:"user_id"`
-	Author              string    `json:"author"`
-	Text                string    `json:"text"`
-	CreatedAt           time.Time `json:"created_at"`
-	LikeCount           int       `json:"like_count"`
-	Retweet             int       `json:"repost"`
-	Public              bool      `json:"public"`
-	OnlyFollowers       bool      `json:"only_followers"`
-	OnlyMutualFollowers bool      `json:"only_mutual_followers"`
-	OnlyMe              bool      `json:"only_me"`
-	LoginToken          string
-	ParentTweetId       int `json:"parent_tweet_id"`
+	Tweets.Tweet
 }
 
 type ReplayTweet struct {
-	Tweet
+	Tweets.Tweet
 }
 
 type DeleteUserST struct {

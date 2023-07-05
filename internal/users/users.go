@@ -549,7 +549,7 @@ func DeleteUserSession(token string) error {
 
 	return nil
 }
-func UserValidVal(userValid *UserValid) error {
+func RegisterUsersValidations(userValid *UserValid) error {
 	err := userValid.validate.RegisterValidation("checkPassword", func(fl validator.FieldLevel) bool {
 		return CheckPassword(fl, userValid)
 	})

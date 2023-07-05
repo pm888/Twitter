@@ -16,9 +16,9 @@ const (
 )
 
 var (
-	pattern     = "^[\\p{L}\\s]+$"
 	commonWords = []string{"password", "12345678", "87654321", "qwerty123"}
 	sequences   = []string{"123", "abc", "xyz"}
+	nameRegex   = regexp.MustCompile("^[\\p{L}\\s]+$")
 )
 
 func HasDigit(password string) bool {
@@ -127,7 +127,7 @@ func CheckName(fl validator.FieldLevel, v *UserValid) bool {
 		v.validErr["name"] += "long name,"
 		u.long = true
 	}
-	match, _ := regexp.MatchString(pattern, name)
+	match := nameRegex.MatchString(name)
 	if match == false {
 		v.validErr["name"] += "digit or special character,"
 		u.realName = true

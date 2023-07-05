@@ -16,7 +16,7 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 		validate: validator.New(),
 		validErr: make(map[string]string),
 	}
-	if err := UserValidVal(userValid); err != nil {
+	if err := RegisterUsersValidations(userValid); err != nil {
 		return
 	}
 
