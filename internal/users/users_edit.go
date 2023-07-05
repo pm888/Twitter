@@ -5,7 +5,7 @@ import (
 	"Twitter_like_application/internal/services"
 	"encoding/json"
 	"fmt"
-	"gopkg.in/go-playground/validator.v9"
+	"github.com/go-playground/validator/v10"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,52 +16,12 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 		validate: validator.New(),
 		validErr: make(map[string]string),
 	}
-
-	err := userValid.validate.RegisterValidation("checkPassword", func(fl validator.FieldLevel) bool {
-		return CheckPassword(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
-	}
-	err = userValid.validate.RegisterValidation("checkName", func(fl validator.FieldLevel) bool {
-		return CheckName(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
+	if err := UserValidVal(userValid); err != nil {
+		return
 	}
 
-	err = userValid.validate.RegisterValidation("checkDataTime", func(fl validator.FieldLevel) bool {
-		return CheckDataTime(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
-	}
-	err = userValid.validate.RegisterValidation("checkNickname", func(fl validator.FieldLevel) bool {
-		return CheckNickName(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
-	}
-	err = userValid.validate.RegisterValidation("checkBio", func(fl validator.FieldLevel) bool {
-		return CheckBio(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
-	}
-	err = userValid.validate.RegisterValidation("checkLocation", func(fl validator.FieldLevel) bool {
-		return CheckLocation(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
-	}
-	err = userValid.validate.RegisterValidation("email", func(fl validator.FieldLevel) bool {
-		return CheckEmailVal(fl, userValid)
-	})
-	if err != nil {
-		services.ReturnErr(w, "err.Error()", http.StatusInternalServerError)
-	}
 	userID := r.Context().Value("userID").(int)
-	err = updateProfile(r, userID, userValid)
+	err := updateProfile(r, userID, userValid)
 	if err != nil {
 		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -81,11 +41,10 @@ func EditProfile(w http.ResponseWriter, r *http.Request) {
 func updateProfile(r *http.Request, userID int, v *UserValid) error {
 	var (
 		hashedPassword []byte
-		key            = []string{}
-		updatedProfile = EditUser{}
+		keys           = []string{}
+		updatedProfile = EditUserRequest{}
 		values         = []any{}
 	)
-
 	err := json.NewDecoder(r.Body).Decode(&updatedProfile)
 	if err != nil {
 		return fmt.Errorf("failed to decode request body: %v", err)
@@ -94,14 +53,14 @@ func updateProfile(r *http.Request, userID int, v *UserValid) error {
 	if err != nil {
 		if validationErrs, ok := err.(validator.ValidationErrors); ok {
 			for _, e := range validationErrs {
-				v.failedValidations = append(v.failedValidations, e.Field())
+				v.validErr["err"] = e.Field()
 			}
 		}
 		return v
 	}
 	if updatedProfile.Name != "" {
 		values = append(values, updatedProfile.Name)
-		key = append(key, " name = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " name = $"+strconv.Itoa(len(keys)+1))
 	}
 	if updatedProfile.Password != "" {
 		err, hashedPassword = services.HashedPassword(updatedProfile.Password)
@@ -109,33 +68,33 @@ func updateProfile(r *http.Request, userID int, v *UserValid) error {
 			return err
 		}
 		values = append(values, string(hashedPassword))
-		key = append(key, " password = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " password = $"+strconv.Itoa(len(keys)+1))
 	}
 	if updatedProfile.Email != "" {
 		values = append(values, updatedProfile.Email)
-		key = append(key, " email = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " email = $"+strconv.Itoa(len(keys)+1))
 	}
 	if updatedProfile.BirthDate != "" {
 		values = append(values, updatedProfile.BirthDate)
-		key = append(key, " birthdate = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " birthdate = $"+strconv.Itoa(len(keys)+1))
 	}
 
 	if updatedProfile.Nickname != "" {
 		values = append(values, updatedProfile.Nickname)
-		key = append(key, " nickname = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " nickname = $"+strconv.Itoa(len(keys)+1))
 	}
 	if updatedProfile.Bio != "" {
 		values = append(values, updatedProfile.Bio)
-		key = append(key, " bio = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " bio = $"+strconv.Itoa(len(keys)+1))
 	}
 
 	if updatedProfile.Location != "" {
 		values = append(values, updatedProfile.Location)
-		key = append(key, " location = $"+strconv.Itoa(len(key)+1))
+		keys = append(keys, " location = $"+strconv.Itoa(len(keys)+1))
 
 	}
 	values = append(values, userID)
-	keyString := strings.Join(key, ", ")
+	keyString := strings.Join(keys, ", ")
 	query := fmt.Sprintf("UPDATE users_tweeter SET %s WHERE id = $%d", keyString, len(values))
 	_, err = pg.DB.Exec(query, values...)
 	if err != nil {

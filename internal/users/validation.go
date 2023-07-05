@@ -1,12 +1,24 @@
 package users
 
 import (
-	"gopkg.in/go-playground/validator.v9"
+	"github.com/go-playground/validator/v10"
 	"net/mail"
 	"regexp"
 	"strings"
 	"time"
 	"unicode"
+)
+
+const (
+	maxNameLenght = 100
+	minNameLenght = 8
+	maxlenghtBio  = 400
+)
+
+var (
+	pattern     = "^[\\p{L}\\s]+$"
+	commonWords = []string{"password", "12345678", "87654321", "qwerty123"}
+	sequences   = []string{"123", "abc", "xyz"}
 )
 
 func HasDigit(password string) bool {
@@ -19,7 +31,6 @@ func HasDigit(password string) bool {
 }
 
 func HasCommonWord(password string) bool {
-	commonWords := []string{"password", "12345678", "87654321", "qwerty123"}
 	for _, word := range commonWords {
 		if strings.Contains(password, word) {
 			return true
@@ -29,7 +40,6 @@ func HasCommonWord(password string) bool {
 }
 
 func HasSequence(password string) bool {
-	sequences := []string{"123", "abc", "xyz"}
 	for _, sequence := range sequences {
 		if strings.Contains(password, sequence) {
 			return true
@@ -39,11 +49,11 @@ func HasSequence(password string) bool {
 }
 func CheckPassword(fl validator.FieldLevel, v *UserValid) bool {
 	password := fl.Field().String()
-	if len(password) < 8 {
+	if len(password) < minNameLenght {
 		v.validErr["password"] += "short,"
 		return false
 	}
-	if len(password) > 100 {
+	if len(password) > maxNameLenght {
 		v.validErr["password"] += "long,"
 		return false
 	}
@@ -94,7 +104,7 @@ func CheckPassword(fl validator.FieldLevel, v *UserValid) bool {
 	return true
 }
 
-func CheckDataTime(fl validator.FieldLevel, v *UserValid) bool {
+func CheckDateTime(fl validator.FieldLevel, v *UserValid) bool {
 	dateStr := fl.Field().String()
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
@@ -113,17 +123,17 @@ func CheckDataTime(fl validator.FieldLevel, v *UserValid) bool {
 func CheckName(fl validator.FieldLevel, v *UserValid) bool {
 	name := fl.Field().String()
 	u := NameVal{}
-	if len(name) > 100 {
+	if len(name) > maxNameLenght {
 		v.validErr["name"] += "long name,"
 		u.long = true
 	}
-	pattern := "^[\\p{L}\\s]+$"
 	match, _ := regexp.MatchString(pattern, name)
 	if match == false {
 		v.validErr["name"] += "digit or special character,"
 		u.realName = true
 	}
-	if (u.long && u.realName) == false {
+
+	if u.long || u.realName {
 		return false
 	}
 	return true
@@ -131,7 +141,7 @@ func CheckName(fl validator.FieldLevel, v *UserValid) bool {
 
 func CheckNickName(fl validator.FieldLevel, v *UserValid) bool {
 	nickname := fl.Field().String()
-	if len(nickname) > 100 {
+	if len(nickname) > maxNameLenght {
 		v.validErr["nickname"] = "long"
 	}
 	return true
@@ -139,7 +149,7 @@ func CheckNickName(fl validator.FieldLevel, v *UserValid) bool {
 }
 func CheckBio(fl validator.FieldLevel, v *UserValid) bool {
 	nickname := fl.Field().String()
-	if len(nickname) > 400 {
+	if len(nickname) > maxlenghtBio {
 		v.validErr["nickname"] = "long"
 	}
 	return true
@@ -147,7 +157,7 @@ func CheckBio(fl validator.FieldLevel, v *UserValid) bool {
 }
 func CheckLocation(fl validator.FieldLevel, v *UserValid) bool {
 	nickname := fl.Field().String()
-	if len(nickname) > 100 {
+	if len(nickname) > maxNameLenght {
 		v.validErr["nickname"] = "long"
 	}
 	return true

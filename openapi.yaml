@@ -110,18 +110,14 @@ paths:
         '500':
           description: Internal Server Error
 
+
   /v1/users/edit:
     patch:
       tags:
         - Users
       summary: Edit User Profile
-      parameters:
-        - name: X-API-KEY
-          in: header
-          description: API key for authorization
-          required: true
-          schema:
-            type: string
+      security:
+        - apiKey: [ ]
       requestBody:
         required: true
         content:
@@ -153,7 +149,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
 
   /v1/users/reset-password:
     post:
@@ -441,23 +436,29 @@ components:
         error:
           type: string
     UserProfileUpdateRequest:
-        type: object
-        properties:
-          name:
-            type: string
-          email:
-            type: string
-          password:
-            type: string
-          birthdate:
-            type: string
-            format: date
-          bio:
-            type: string
-          nickname:
-            type: string
-          location:
-            type: string
+      type: object
+      properties:
+        name:
+          type: string
+          format: name
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        birthdate:
+          type: string
+          format: date
+        nickname:
+          type: string
+          format: nickname
+        bio:
+          type: string
+          format: bio
+        location:
+          type: string
+          format: location
     SuccessResponse:
       type: object
       properties:
@@ -470,10 +471,6 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-    appId:
-      type: apiKey
-      in: header
-      name: X-APP-ID
 security:
     - apiKey: [ ]
       appId: [ ]

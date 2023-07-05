@@ -1,7 +1,6 @@
 package users
 
 import (
-	"gopkg.in/go-playground/validator.v9"
 	"time"
 )
 
@@ -64,10 +63,7 @@ type Tweeter_like struct {
 	Id_post    int `json:"id_post"`
 	Whose_like int `json:"whose_like"`
 }
-type UserVal struct {
-	validate *validator.Validate
-}
-type EditUser struct {
+type EditUserRequest struct {
 	ID        int
 	Name      string `json:"name" validate:"omitempty,checkName"`
 	Password  string `json:"password" validate:"omitempty,checkPassword"`
