@@ -1,54 +1,24 @@
 package users
 
-import (
-	"time"
-)
+import Tweets "Twitter_like_application/internal/tweets"
 
 type Users struct {
 	ID                 int
-	Name               string `json:"name"`
-	Password           string `json:"password"`
-	Email              string `json:"email"`
+	Name               string `json:"name" validate:"omitempty"`
+	Password           string `json:"password" validate:"omitempty"`
+	Email              string `json:"email" validate:"omitempty,email"`
 	EmailToken         string
 	ConfirmEmailToken  bool
 	ResetPasswordToken string
-	BirthDate          string `json:"birthdate"`
-	Nickname           string `json:"nickname"`
-	Bio                string `json:"bio"`
-	Location           string `json:"location"`
-	Tweet
-	Following []int
-	Followers []int
-}
-
-type ReplaceMyData struct {
-	NewName      string `json:"new_name"`
-	NewPassword  string `json:"new_password"`
-	NewEmail     string `json:"new_email"`
-	NewBirthDate string `json:"new_birth_date"`
-	NewNickname  string `json:"new_nickname"`
-	NewBio       string `json:"new_bio"`
-	NewLocation  string `json:"new_location"`
-}
-
-type Tweet struct {
-	TweetID             int       `json:"tweet_id"`
-	UserID              int       `json:"user_id"`
-	Author              string    `json:"author"`
-	Text                string    `json:"text"`
-	CreatedAt           time.Time `json:"created_at"`
-	LikeCount           int       `json:"like_count"`
-	Retweet             int       `json:"repost"`
-	Public              bool      `json:"public"`
-	OnlyFollowers       bool      `json:"only_followers"`
-	OnlyMutualFollowers bool      `json:"only_mutual_followers"`
-	OnlyMe              bool      `json:"only_me"`
-	LoginToken          string
-	ParentTweetId       int `json:"parent_tweet_id"`
+	BirthDate          string `json:"birthdate" validate:"omitempty"`
+	Nickname           string `json:"nickname" validate:"omitempty"`
+	Bio                string `json:"bio" validate:"omitempty"`
+	Location           string `json:"location" validate:"omitempty"`
+	Tweets.Tweet
 }
 
 type ReplayTweet struct {
-	Tweet
+	Tweets.Tweet
 }
 
 type DeleteUserST struct {
@@ -74,4 +44,14 @@ type Tweeter_like struct {
 	Autor      int `json:"autor"`
 	Id_post    int `json:"id_post"`
 	Whose_like int `json:"whose_like"`
+}
+type EditUserRequest struct {
+	ID        int
+	Name      string `json:"name" validate:"omitempty,checkName"`
+	Password  string `json:"password" validate:"omitempty,checkPassword"`
+	Email     string `json:"email" validate:"omitempty,email"`
+	BirthDate string `json:"birthdate" validate:"omitempty,checkDataTime"`
+	Nickname  string `json:"nickname" validate:"omitempty,checkNickname"`
+	Bio       string `json:"bio" validate:"omitempty,checkBio"`
+	Location  string `json:"location" validate:"omitempty,checkLocation"`
 }

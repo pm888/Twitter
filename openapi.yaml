@@ -131,33 +131,45 @@ paths:
         '500':
           description: Internal Server Error
 
-  /v1/users:
+
+  /v1/users/edit:
     patch:
       tags:
         - Users
       summary: Edit User Profile
+      security:
+        - apiKey: [ ]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUserProfile'
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
       responses:
         '200':
           description: Profile updated successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                  message:
-                    type: string
+                $ref: '#/components/schemas/SuccessResponse'
         '400':
-          description: Bad Request
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /v1/users/reset-password:
     post:
@@ -444,15 +456,42 @@ components:
       properties:
         error:
           type: string
+    UserProfileUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          format: string
+        email:
+          type: string
+          format: string
+        password:
+          type: string
+          format: string
+        birthdate:
+          type: string
+          format: date-time
+        nickname:
+          type: string
+          format: string
+        bio:
+          type: string
+          format: string
+        location:
+          type: string
+          format: string
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
   securitySchemes:
     apiKey:
       type: apiKey
       in: header
       name: X-API-KEY
-    appId:
-      type: apiKey
-      in: header
-      name: X-APP-ID
 security:
     - apiKey: [ ]
       appId: [ ]

@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
@@ -17,14 +18,34 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"strings"
 	"time"
 )
+
+type UserValid struct {
+	validate *validator.Validate
+	validErr map[string]string
+}
+type NameVal struct {
+	short    bool
+	long     bool
+	realName bool
+}
+
+func (v *UserValid) Error() string {
+	var pairs []string
+	for k, v := range v.validErr {
+		pairs = append(pairs, fmt.Sprintf("%s: %s", k, v))
+	}
+
+	result := strings.Join(pairs, "; ")
+	return result
+}
 
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	apikey := r.Header.Get("X-API-KEY")
 	cookie, err := r.Cookie("session")
 	if apikey == "" && (err != nil || cookie == nil) {
-		fmt.Println(err)
 		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -309,47 +330,6 @@ func UnfollowUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Println("Done")
 }
-
-func EditProfile(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(int)
-
-	var updatedProfile Users
-	err := json.NewDecoder(r.Body).Decode(&updatedProfile)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	query := "UPDATE users_tweeter SET username = $1, nickname = $2, birthdate = $3, email = $4, password = $5 WHERE id = $6"
-	values := []interface{}{updatedProfile.Name, updatedProfile.Nickname, updatedProfile.BirthDate, updatedProfile.Email, updatedProfile.Password, userID}
-
-	if updatedProfile.Password != "" {
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updatedProfile.Password), bcrypt.DefaultCost)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		query += ", password = $5"
-		values = append(values, hashedPassword)
-	}
-
-	query += " WHERE id = $6"
-	values = append(values, userID)
-
-	_, err = pg.DB.Exec(query, values...)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	response := map[string]interface{}{
-		"status":  "success",
-		"message": "Profile updated successfully",
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
 func GetFollowers(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("user_id")
 	if userID == "" {
@@ -484,6 +464,7 @@ func GetStatistics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(statistics)
 }
+
 func CheckEmail(newUser *Users) string {
 	token := make([]byte, 32)
 	_, err := rand.Read(token)
@@ -566,5 +547,51 @@ func DeleteUserSession(token string) error {
 		return err
 	}
 
+	return nil
+}
+func RegisterUsersValidations(userValid *UserValid) error {
+	err := userValid.validate.RegisterValidation("checkPassword", func(fl validator.FieldLevel) bool {
+		return CheckPassword(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
+	err = userValid.validate.RegisterValidation("checkName", func(fl validator.FieldLevel) bool {
+		return CheckName(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
+
+	err = userValid.validate.RegisterValidation("checkDataTime", func(fl validator.FieldLevel) bool {
+		return CheckDateTime(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
+	err = userValid.validate.RegisterValidation("checkNickname", func(fl validator.FieldLevel) bool {
+		return CheckNickName(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
+	err = userValid.validate.RegisterValidation("checkBio", func(fl validator.FieldLevel) bool {
+		return CheckBio(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
+	err = userValid.validate.RegisterValidation("checkLocation", func(fl validator.FieldLevel) bool {
+		return CheckLocation(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
+	err = userValid.validate.RegisterValidation("email", func(fl validator.FieldLevel) bool {
+		return CheckEmailVal(fl, userValid)
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }

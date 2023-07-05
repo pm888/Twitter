@@ -2,13 +2,12 @@ package services
 
 import (
 	Postgresql "Twitter_like_application/internal/database/pg"
-	//Serviceuser "Twitter_like_application/internal/users"
-
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -133,4 +132,11 @@ func ReturnErr(w http.ResponseWriter, err string, code int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(errj)
+}
+func HashedPassword(password string) (error, []byte) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err, nil
+	}
+	return nil, hashedPassword
 }
