@@ -202,18 +202,13 @@ paths:
         '500':
           description: Internal Server Error
 
-  /v1/tweets:
+  /v1/tweets/craete:
     post:
       tags:
         - Tweets
       summary: Create Tweet
-      parameters:
-        - name: X-API-KEY
-          in: header
-          description: API key for authentication
-          required: true
-          schema:
-            type: string
+      security:
+        - apiKey: [ ]
       requestBody:
         required: true
         content:
@@ -460,8 +455,6 @@ components:
             type: boolean
           only_me:
             type: boolean
-          parent_tweet_id:
-            type: integer
         required:
           - text
   securitySchemes:
@@ -469,10 +462,6 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-    appId:
-      type: apiKey
-      in: header
-      name: X-APP-ID
 security:
     - apiKey: [ ]
       appId: [ ]
