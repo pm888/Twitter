@@ -88,25 +88,20 @@ paths:
         '500':
           description: Internal server error.
 
-  /v1/users/{id}:
+  /v1/users/:
     get:
       tags:
         - Users
       summary: Get Current User Profile
-      parameters:
-        - name: X-API-KEY
-          in: header
-          description: API Key
-          required: true
-          schema:
-            type: string
+      security:
+        - apiKey: [ ]
       responses:
         '200':
           description: Current User Profile
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfile'
+                $ref: '#/components/schemas/GetUserProfile'
         '500':
           description: Internal Server Error
 
@@ -383,6 +378,26 @@ components:
         updatedAt:
           type: string
           format: date-time
+    GetUserProfile:
+      type: object
+      properties:
+        name:
+          type: string
+        birthdate:
+          type: string
+          format: data-time
+        nickname:
+          type: string
+        bio:
+          type: string
+        location:
+          type: string
+        followers:
+          type: integer
+        subscription:
+          type: integer
+
+
     UpdateUserProfile:
       type: object
       properties:
@@ -429,10 +444,6 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-    appId:
-      type: apiKey
-      in: header
-      name: X-APP-ID
 security:
     - apiKey: [ ]
       appId: [ ]
