@@ -1,6 +1,7 @@
 package server
 
 import (
+	"Twitter_like_application/internal/admin"
 	Tweets "Twitter_like_application/internal/tweets"
 	Serviceuser "Twitter_like_application/internal/users"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 
 func Server() {
 	r := mux.NewRouter()
-	fmt.Println("Server was run", "localhost:8080")
+	fmt.Println(fmt.Sprintf("Server was run %s:%s", admin.ServerHost, admin.ServerPort))
 	r.Use(LoggingMiddleware)
 	r.Use(CorsMiddleware)
 	r.HandleFunc("/v1/users/create", Serviceuser.CreateUser).Methods(http.MethodPost)
