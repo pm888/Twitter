@@ -22,7 +22,7 @@ type Tweet struct {
 }
 type CreatNewTweet struct {
 	TweetID             int
-	Text                string `json:"text" validate:"omitempty,checkTweetText"`
+	Text                string `json:"text" validate:"required,checkTweetText"`
 	CreatedAt           time.Time
 	Public              bool `json:"public"`
 	OnlyFollowers       bool `json:"only_followers"`

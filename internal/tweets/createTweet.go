@@ -14,7 +14,7 @@ func CreateNewTweet(w http.ResponseWriter, r *http.Request) {
 		Validate: validator.New(),
 		ValidErr: make(map[string]string),
 	}
-	if err := RegisterUsersValidations(tweetValid); err != nil {
+	if err := RegisterTweetValidations(tweetValid); err != nil {
 		services.ReturnErr(w, err.Error(), http.StatusBadRequest)
 	}
 	userID := r.Context().Value("userID").(int)

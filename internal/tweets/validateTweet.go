@@ -27,7 +27,7 @@ func CheckTweetText(fl validator.FieldLevel, v *TweetValid) bool {
 	}
 	return true
 }
-func RegisterUsersValidations(tweetValid *TweetValid) error {
+func RegisterTweetValidations(tweetValid *TweetValid) error {
 	err := tweetValid.Validate.RegisterValidation("checkTweetText", func(fl validator.FieldLevel) bool {
 		return CheckTweetText(fl, tweetValid)
 	})
