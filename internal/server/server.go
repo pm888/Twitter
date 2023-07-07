@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 )
 
-func Server() {
+func Server() error {
 	r := mux.NewRouter()
 	fmt.Println(fmt.Sprintf("Server was run %s:%s", admin.ServerHost, admin.ServerPort))
 	r.Use(LoggingMiddleware)
@@ -57,8 +57,9 @@ func Server() {
 		w.WriteHeader(http.StatusOK)
 
 	})
-	err := http.ListenAndServe("localhost:8080", r)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%s", admin.ServerHost, admin.ServerPort), r)
 	fmt.Println(err)
+	return err
 }
 
 func LoggingMiddleware(next http.Handler) http.Handler {
