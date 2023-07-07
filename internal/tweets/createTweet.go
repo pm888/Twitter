@@ -4,6 +4,7 @@ import (
 	"Twitter_like_application/internal/database/pg"
 	"Twitter_like_application/internal/services"
 	"encoding/json"
+	"fmt"
 	"github.com/go-playground/validator/v10"
 	"net/http"
 	"time"
@@ -15,7 +16,7 @@ func CreateNewTweet(w http.ResponseWriter, r *http.Request) {
 		ValidErr: make(map[string]string),
 	}
 	if err := RegisterTweetValidations(tweetValid); err != nil {
-		services.ReturnErr(w, err.Error(), http.StatusBadRequest)
+		fmt.Println(err)
 	}
 	userID := r.Context().Value("userID").(int)
 	var newTweet CreatNewTweet
