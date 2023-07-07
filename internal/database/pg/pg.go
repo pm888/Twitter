@@ -24,11 +24,12 @@ func ConnectPostgresql() error {
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
+		fmt.Println("error connect BD")
 		return err
 	}
 
 	DB = db
-	fmt.Println("PG ran....", connStr)
+	fmt.Println("**** PG ran.... ****")
 
 	return nil
 }
