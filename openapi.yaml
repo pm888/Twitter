@@ -272,6 +272,11 @@ paths:
         '500':
           description: Internal Server Error
 
+
+
+
+
+
   v1/tweets/{id_tweet}/like:
       post:
         tags:
@@ -323,11 +328,34 @@ paths:
         '500':
           description: Internal server error
 
+
   /v1/tweets/{id_tweet}/retweet:
     post:
       tags:
         - Tweets
       summary: Retweet a tweet
+      parameters:
+        - in: path
+          name: id_tweet
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retweet successful
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Tweet not found
+        '500':
+          description: Internal server error
+  /v1/tweets/{id_tweet}/delete:
+    delete:
+      tags:
+        - Tweets
+      summary: Delete a tweet
       parameters:
         - in: path
           name: id_tweet
