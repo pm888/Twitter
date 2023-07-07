@@ -88,27 +88,11 @@ paths:
         '500':
           description: Internal server error.
 
-  /v1/users/:
+  /v1/users/{id}:
     get:
       tags:
         - Users
       summary: Get Current User Profile
-      security:
-        - apiKey: [ ]
-      responses:
-        '200':
-          description: Current User Profile
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetUserProfile'
-        '500':
-          description: Internal Server Error
-  /v1/users/profile/{id}:
-    get:
-      tags:
-        - Users
-      summary: Get User Profile
       parameters:
         - name: id
           in: path
@@ -125,7 +109,6 @@ paths:
                 $ref: '#/components/schemas/UserProfile'
         '500':
           description: Internal Server Error
-
 
   /v1/users:
     patch:
@@ -219,19 +202,17 @@ paths:
         '500':
           description: Internal Server Error
 
-  /v1/tweets/craete:
+  /v1/tweets:
     post:
       tags:
         - Tweets
       summary: Create Tweet
-      security:
-        - apiKey: [ ]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TweetRequest'
+              $ref: '#/components/schemas/Tweet'
       responses:
         '201':
           description: Tweet created successfully
@@ -247,8 +228,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal Server Error
-
-
 
   /v1/tweets/{id}:
     get:
@@ -271,11 +250,6 @@ paths:
                 $ref: '#/components/schemas/Tweet'
         '500':
           description: Internal Server Error
-
-
-
-
-
 
   v1/tweets/{id_tweet}/like:
       post:
@@ -328,7 +302,6 @@ paths:
         '500':
           description: Internal server error
 
-
   /v1/tweets/{id_tweet}/retweet:
     post:
       tags:
@@ -351,28 +324,75 @@ paths:
           description: Tweet not found
         '500':
           description: Internal server error
-  /v1/tweets/{id_tweet}/delete:
-    delete:
+  /v1/tweets/{tweet_id}:
+    patch:
       tags:
         - Tweets
-      summary: Delete a tweet
+      summary: Edit Tweet
       parameters:
-        - in: path
-          name: id_tweet
+        - name: tweet_id
+          in: path
+          description: ID of the tweet to edit
+          required: true
+          schema:
+            type: integer
+        - name: X-API-KEY
+          in: header
+          description: API key for authentication
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                public:
+                  type: boolean
+                only_followers:
+                  type: boolean
+                only_mutual_followers:
+                  type: boolean
+                only_me:
+                  type: boolean
+                parent_tweet_id:
+                  type: integer
+              required:
+                - text
+                - public
+                - only_followers
+                - only_mutual_followers
+                - only_me
+                - parent_tweet_id
       responses:
         '200':
-          description: Retweet successful
+          description: Tweet updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tweet'
         '400':
-          description: Bad request
+          description: Invalid tweet data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
-        '404':
-          description: Tweet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal server error
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 
 components:
@@ -431,26 +451,6 @@ components:
         updatedAt:
           type: string
           format: date-time
-    GetUserProfile:
-      type: object
-      properties:
-        name:
-          type: string
-        birthdate:
-          type: string
-          format: data-time
-        nickname:
-          type: string
-        bio:
-          type: string
-        location:
-          type: string
-        followers:
-          type: integer
-        subscription:
-          type: integer
-
-
     UpdateUserProfile:
       type: object
       properties:
@@ -481,52 +481,26 @@ components:
         id2:
           type: string
     Tweet:
-        type: object
-        properties:
-          tweet_id:
-            type: integer
-          user_id:
-            type: integer
-          text:
-            type: string
-          created_at:
-            type: string
-            format: date-time
-          public:
-            type: boolean
-          only_followers:
-            type: boolean
-          only_mutual_followers:
-            type: boolean
-          only_me:
-            type: boolean
-          parent_tweet_id:
-            type: integer
+      type: object
+      properties:
+        userId:
+          type: integer
+        content:
+          type: string
     ErrorResponse:
       type: object
       properties:
         error:
           type: string
-    TweetRequest:
-        type: object
-        properties:
-          text:
-            type: string
-          public:
-            type: boolean
-          only_followers:
-            type: boolean
-          only_mutual_followers:
-            type: boolean
-          only_me:
-            type: boolean
-        required:
-          - text
   securitySchemes:
     apiKey:
       type: apiKey
       in: header
       name: X-API-KEY
+    appId:
+      type: apiKey
+      in: header
+      name: X-APP-ID
 security:
     - apiKey: [ ]
       appId: [ ]
