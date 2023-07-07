@@ -13,7 +13,7 @@ import (
 
 func Server() error {
 	r := mux.NewRouter()
-	fmt.Println(fmt.Sprintf("Server was run %s:%s", admin.ServerHost, admin.ServerPort))
+	fmt.Printf("Server was run %s:%s", admin.ServerHost, admin.ServerPort)
 	r.Use(LoggingMiddleware)
 	r.Use(CorsMiddleware)
 	r.HandleFunc("/v1/users/create", Serviceuser.CreateUser).Methods(http.MethodPost)
