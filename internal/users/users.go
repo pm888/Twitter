@@ -514,20 +514,6 @@ func CheckEmail(newUser *Users) string {
 	return confirmToken
 }
 
-func GetCurrentProfile(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("userID").(int)
-
-	query := "SELECT id, name, email, birthdate,bio,location,nicname  FROM users_tweeter WHERE id = $1"
-	var user Users
-	err := pg.DB.QueryRow(query, userID).Scan(&user.ID, &user.Name, &user.Email, &user.BirthDate, &user.Bio, &user.Location, &user.Nickname)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
-}
 func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["id"]
