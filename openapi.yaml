@@ -324,69 +324,7 @@ paths:
           description: Tweet not found
         '500':
           description: Internal server error
-  /v1/tweets/{tweet_id}:
-    patch:
-      tags:
-        - Tweets
-      summary: Edit Tweet
-      security:
-        - apiKey: [ ]
-      parameters:
-        - name: tweet_id
-          in: path
-          description: ID of the tweet to edit
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                text:
-                  type: string
-                public:
-                  type: boolean
-                only_followers:
-                  type: boolean
-                only_mutual_followers:
-                  type: boolean
-                only_me:
-                  type: boolean
-              required:
-                - text
-                - public
-                - only_followers
-                - only_mutual_followers
-                - only_me
-            x-codegen-request-body-name: updatedTweet
-      responses:
-        '200':
-          description: Tweet updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Tweet'
-        '400':
-          description: Invalid tweet data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+
 
 components:
   schemas:
@@ -476,10 +414,10 @@ components:
     Tweet:
       type: object
       properties:
-       status:
-        type: string
-    message:
-      type: string
+        userId:
+          type: integer
+        content:
+          type: string
     ErrorResponse:
       type: object
       properties:
@@ -490,4 +428,10 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-
+    appId:
+      type: apiKey
+      in: header
+      name: X-APP-ID
+security:
+    - apiKey: [ ]
+      appId: [ ]
