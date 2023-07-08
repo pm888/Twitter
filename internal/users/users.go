@@ -10,14 +10,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"net/smtp"
 	"net/url"
-	"time"
 )
 
 func handleAuthenticatedRequest(w http.ResponseWriter, r *http.Request, next http.Handler) {
@@ -110,106 +108,6 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newUser)
-}
-
-func LoginUsers(w http.ResponseWriter, r *http.Request) {
-	user := &Users{}
-	err := json.NewDecoder(r.Body).Decode(user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	query := "SELECT id, password FROM users_tweeter WHERE email = $1"
-	var userID int
-	var savedPassword string
-	err = pg.DB.QueryRow(query, user.Email).Scan(&userID, &savedPassword)
-	if err != nil {
-		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(savedPassword), []byte(user.Password))
-	if err == nil {
-		sessionID := uuid.New().String()
-
-		cookie := &http.Cookie{
-			Name:     "session",
-			Value:    sessionID,
-			Expires:  time.Now().AddDate(0, 0, 30),
-			HttpOnly: true,
-			Path:     "/",
-		}
-		http.SetCookie(w, cookie)
-
-		insertQuery := "INSERT INTO user_session (user_id, login_token, timestamp) VALUES ($1, $2, $3)"
-		_, err = pg.DB.Exec(insertQuery, userID, cookie.Value, time.Now())
-		if err != nil {
-			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		response := map[string]interface{}{
-			"status":  "success",
-			"message": "Authentication successful",
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	} else if err == bcrypt.ErrMismatchedHashAndPassword {
-		response := map[string]interface{}{
-			"status":  "error",
-			"message": "Invalid email or password",
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	} else {
-		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	apikey := r.Header.Get("X-API-KEY")
-	fmt.Println(apikey)
-	if apikey == "" {
-		cookie, err := r.Cookie("session")
-		if err != nil {
-			services.ReturnErr(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		err = DeleteUserSession(cookie.Value)
-		if err != nil {
-			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		cookie = &http.Cookie{
-			Name:    "session",
-			Value:   "",
-			Expires: time.Now().AddDate(0, 0, -1),
-			Path:    "/",
-		}
-		http.SetCookie(w, cookie)
-
-		response := map[string]interface{}{
-			"status":  "success",
-			"message": "Logged out successfully",
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	} else {
-		err := DeleteUserSession(apikey)
-		if err != nil {
-			services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		response := map[string]interface{}{
-			"status":  "success",
-			"message": "Logged out successfully",
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-	}
 }
 
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -544,13 +442,4 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-func DeleteUserSession(token string) error {
-	query := "DELETE FROM user_session WHERE login_token = $1"
-	_, err := pg.DB.Exec(query, token)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
