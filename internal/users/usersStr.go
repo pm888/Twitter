@@ -20,7 +20,10 @@ type Users struct {
 	Following []int
 	Followers []int
 }
-
+type UserLogin struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 type ReplaceMyData struct {
 	NewName      string `json:"new_name"`
 	NewPassword  string `json:"new_password"`
