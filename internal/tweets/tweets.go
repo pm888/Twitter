@@ -3,15 +3,11 @@ package tweets
 import (
 	"Twitter_like_application/internal/database/pg"
 	_ "Twitter_like_application/internal/database/pg"
-	"Twitter_like_application/internal/services"
 	Serviceuser "Twitter_like_application/internal/users"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -32,76 +28,6 @@ func GetTweet(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tweet)
-}
-func EditTweet(w http.ResponseWriter, r *http.Request) {
-	idTweet := mux.Vars(r)["id_tweet"]
-	var (
-		key    = []string{}
-		values = []any{}
-	)
-	apikey := r.Header.Get("X-API-KEY")
-	cookie, err := r.Cookie("session")
-	var sessionID string
-	if apikey != "" {
-		sessionID = apikey
-	} else {
-		sessionID = cookie.Value
-	}
-	if apikey == "" && (err != nil || cookie == nil) {
-		fmt.Println(err)
-		services.ReturnErr(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	var updatedTweet Serviceuser.Tweet
-	err = json.NewDecoder(r.Body).Decode(&updatedTweet)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	query := "SELECT user_id FROM user_session WHERE login_token = $1"
-	var userID int
-	err = pg.DB.QueryRow(query, sessionID).Scan(&userID)
-	if err != nil {
-		services.ReturnErr(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if updatedTweet.Text != "" {
-		values = append(values, updatedTweet.Text)
-		key = append(key, "text = $"+strconv.Itoa(len(key)+1))
-	}
-	if updatedTweet.Public == true {
-		values = append(values, updatedTweet.Public, false, false, false)
-		key = append(key, "public = $"+strconv.Itoa(len(key)+1), "only_followers = $"+strconv.Itoa(len(key)+2), "only_mutual_followers = $"+strconv.Itoa(len(key)+3), "only_me = $"+strconv.Itoa(len(key)+4))
-	} else if updatedTweet.OnlyFollowers == true {
-		values = append(values, updatedTweet.OnlyFollowers, false, false, false)
-		key = append(key, "only_followers = $"+strconv.Itoa(len(key)+1), "public = $"+strconv.Itoa(len(key)+2), "only_mutual_followers = $"+strconv.Itoa(len(key)+3), "only_me = $"+strconv.Itoa(len(key)+4))
-	} else if updatedTweet.OnlyMutualFollowers == true {
-		values = append(values, updatedTweet.OnlyMutualFollowers, false, false, false)
-		key = append(key, "only_mutual_followers = $"+strconv.Itoa(len(key)+1), "public = $"+strconv.Itoa(len(key)+2), "only_followers = $"+strconv.Itoa(len(key)+3), "only_me = $"+strconv.Itoa(len(key)+4))
-	} else if updatedTweet.OnlyMe == true {
-		values = append(values, updatedTweet.OnlyMe, false, false, false)
-		key = append(key, "only_me = $"+strconv.Itoa(len(key)+1), "public = $"+strconv.Itoa(len(key)+2), "only_followers = $"+strconv.Itoa(len(key)+3), "only_mutual_followers = $"+strconv.Itoa(len(key)+4))
-	}
-	keystring := strings.Join(key, ", ")
-	values = append(values, idTweet)
-	if cookie != nil || apikey != "" {
-		query := fmt.Sprintf("UPDATE tweets SET %s WHERE tweet_id = $%d", keystring, len(values))
-		_, err = pg.DB.Exec(query, values...)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		}
-	} else {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	response := map[string]interface{}{
-		"status":  "success",
-		"message": "Tweet updated successfully",
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
 }
 
 func LikeTweet(w http.ResponseWriter, r *http.Request) {

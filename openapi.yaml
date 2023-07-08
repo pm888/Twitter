@@ -329,6 +329,8 @@ paths:
       tags:
         - Tweets
       summary: Edit Tweet
+      security:
+        - apiKey: [ ]
       parameters:
         - name: tweet_id
           in: path
@@ -336,12 +338,6 @@ paths:
           required: true
           schema:
             type: integer
-        - name: X-API-KEY
-          in: header
-          description: API key for authentication
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -359,15 +355,13 @@ paths:
                   type: boolean
                 only_me:
                   type: boolean
-                parent_tweet_id:
-                  type: integer
               required:
                 - text
                 - public
                 - only_followers
                 - only_mutual_followers
                 - only_me
-                - parent_tweet_id
+            x-codegen-request-body-name: updatedTweet
       responses:
         '200':
           description: Tweet updated successfully
@@ -393,7 +387,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
 
 components:
   schemas:
@@ -483,10 +476,10 @@ components:
     Tweet:
       type: object
       properties:
-        userId:
-          type: integer
-        content:
-          type: string
+       status:
+        type: string
+    message:
+      type: string
     ErrorResponse:
       type: object
       properties:
@@ -497,10 +490,4 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-    appId:
-      type: apiKey
-      in: header
-      name: X-APP-ID
-security:
-    - apiKey: [ ]
-      appId: [ ]
+

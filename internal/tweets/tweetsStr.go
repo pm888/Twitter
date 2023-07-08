@@ -34,3 +34,11 @@ type TweetValid struct {
 	Validate *validator.Validate
 	ValidErr map[string]string
 }
+
+type EditTweetRequest struct {
+	Text                string `json:"text" validate:"required,checkTweetText"`
+	Public              bool   `json:"public"`
+	OnlyFollowers       bool   `json:"only_followers"`
+	OnlyMutualFollowers bool   `json:"only_mutual_followers"`
+	OnlyMe              bool   `json:"only_me"`
+}
