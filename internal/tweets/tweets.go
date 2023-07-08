@@ -12,6 +12,50 @@ import (
 	"time"
 )
 
+func CreateTweet(w http.ResponseWriter, r *http.Request) {
+	var newTweet Serviceuser.Tweet
+	err := json.NewDecoder(r.Body).Decode(&newTweet)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	cookie, err := r.Cookie("session")
+	if err != nil || cookie.Value == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	tokenString := cookie.Value
+
+	query := "SELECT logintoken FROM users_tweeter WHERE id = $1"
+	stmt, err := pg.DB.PrepareContext(r.Context(), query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer stmt.Close()
+
+	var dbToken string
+	err = stmt.QueryRowContext(r.Context(), newTweet.UserID).Scan(&dbToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if tokenString != dbToken {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	query = `INSERT INTO tweets (tweet_id, user_id, text, created_at, parent_tweet_id, public, only_followers, only_mutual_followers, only_me,retweet)
+	 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING tweet_id`
+	err = pg.DB.QueryRowContext(r.Context(), query, newTweet.TweetID, newTweet.UserID, newTweet.Text, time.Now(), newTweet.ParentTweetId, newTweet.Public, newTweet.OnlyFollowers, newTweet.OnlyMutualFollowers, newTweet.OnlyMe, newTweet.Retweet).Scan(&newTweet.TweetID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func GetTweet(w http.ResponseWriter, r *http.Request) {
 	tweetID := r.URL.Query().Get("tweet_id")
 	if tweetID == "" {
