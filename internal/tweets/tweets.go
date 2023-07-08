@@ -6,7 +6,6 @@ import (
 	Serviceuser "Twitter_like_application/internal/users"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"time"
@@ -73,30 +72,6 @@ func GetTweet(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tweet)
-}
-func EditTweet(w http.ResponseWriter, r *http.Request) {
-	tweetID := mux.Vars(r)["tweet_id"]
-
-	var updatedTweet Serviceuser.Tweet
-	err := json.NewDecoder(r.Body).Decode(&updatedTweet)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	query := `
-		UPDATE tweets
-		SET text = $1
-		WHERE tweet_id = $2
-	`
-	_, err = pg.DB.ExecContext(r.Context(), query, updatedTweet.Text, tweetID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Tweet %s updated successfully", tweetID)
 }
 
 func LikeTweet(w http.ResponseWriter, r *http.Request) {
