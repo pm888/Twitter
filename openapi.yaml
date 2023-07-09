@@ -182,11 +182,13 @@ paths:
         '500':
           description: Internal Server Error
 
-  /v1/users/{id}/follow:
+  /v1/users/follow:
     post:
       tags:
         - Users
       summary: Follow User
+      security:
+        - apiKey: [ ]
       requestBody:
         required: true
         content:
@@ -200,11 +202,13 @@ paths:
           description: Bad Request
         '500':
           description: Internal Server Error
-  /v1/users/{id}/unfollow:
+  /v1/users/unfollow:
     post:
       tags:
         - Users
       summary: Unfollow User
+      security:
+        - apiKey: [ ]
       requestBody:
         required: true
         content:
@@ -473,8 +477,8 @@ components:
     UsersFollow:
       type: object
       properties:
-        id2:
-          type: string
+        id:
+          type: integer
     UsersunFollow:
       type: object
       properties:
@@ -527,6 +531,3 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-security:
-    - apiKey: [ ]
-      appId: [ ]

@@ -24,10 +24,10 @@ func Server() {
 	r.HandleFunc("/v1/users/reset-password", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.ResetPassword)).ServeHTTP(w, r)
 	}).Methods(http.MethodPost)
-	r.HandleFunc("/v1/users/{id}/follow", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/v1/users/follow", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.FollowUser)).ServeHTTP(w, r)
 	}).Methods(http.MethodPost)
-	r.HandleFunc("/v1/users/{id}/unfollow", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/v1/users/unfollow", func(w http.ResponseWriter, r *http.Request) {
 		Serviceuser.AuthHandler(http.HandlerFunc(Serviceuser.UnfollowUser)).ServeHTTP(w, r)
 	}).Methods(http.MethodPost)
 	r.HandleFunc("/v1/users", func(w http.ResponseWriter, r *http.Request) {
