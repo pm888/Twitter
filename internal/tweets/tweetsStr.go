@@ -34,3 +34,7 @@ type TweetValid struct {
 	Validate *validator.Validate
 	ValidErr map[string]string
 }
+type TweetReply struct {
+	ReplyId int
+	Text    string `json:"text" validate:"required,checkTweetText"`
+}

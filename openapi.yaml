@@ -248,7 +248,40 @@ paths:
         '500':
           description: Internal Server Error
 
-
+  /v1/tweets/{tweet_id}/reply:
+    post:
+      tags:
+        - Tweets
+      summary: Reply Tweet
+      parameters:
+        - name: tweet_id
+          in: path
+          description: Tweet ID
+          required: true
+          schema:
+            type: integer
+      security:
+        - apiKey: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplyRequest'
+      responses:
+        '201':
+          description: Reply created successfully
+          content:
+            application/json:
+              schema:
+        '400':
+          description: Invalid tweet data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
 
   /v1/tweets/{id}:
     get:
@@ -506,6 +539,11 @@ components:
       type: object
       properties:
         error:
+          type: string
+    ReplyRequest:
+      type: object
+      properties:
+        text:
           type: string
     TweetRequest:
         type: object
